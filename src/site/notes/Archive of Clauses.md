@@ -3,6 +3,7 @@
 ---
 
 
-# Archive of Clauses (AoC)
+# Home
+## Welcome to Archive of Clauses or AoC
 
 [[What is AoC?\|What is AoC?]]
