@@ -2,7 +2,9 @@
 {"dg-publish":true,"permalink":"/01-all-about-love/"}
 ---
 
-# 01 — All About Love.
+>[!info]- About this chapter
+>This chapter explores love.
+# 01 — All About Love
 
 **AoC 1:1-5**
 Love is a fundamental way of experiencing life.¹ For us humans, love is a necessity.² We don't feel *nor* won't *we be* human if we didn't receive love.³
@@ -11,5 +13,12 @@ Love exists in all kinds of dimensions and from all directions.⁴ It can come f
 
 ---
 
-**Related with Love** 
+# 01 — All About Love 
+
+**AoC 01:6-10**
+
+
+# Related with Love
+
+[[01 - Love\|01 - Love]]
 
