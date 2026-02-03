@@ -2,8 +2,6 @@
 {"dg-publish":true,"permalink":"/01-all-about-love/"}
 ---
 
->[!info]- About this chapter
->This chapter explores love.
 # 01 — All About Love
 
 **AoC 1:1-5**

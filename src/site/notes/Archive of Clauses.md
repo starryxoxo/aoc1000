@@ -5,13 +5,13 @@
 
 ## Welcome to Archive of Clauses or AoC
 
-[[What is AoC?\|What is AoC?]]
+What is AoC?
+AoC is a collection of phrases (*called Clauses*) that you can use using a familiar referencing style. 
 
-AoC is a collection of phrases that you can use to refer. Think of it as a big archive where everyone can say things using just AoC chapter:verse.
-
-[[Use AoC\|See Use Guide]]
+[[Use AoC\|Learn how to use a clause]]
 
 ---
 
+# Clauses
 [[01 - All About Love\|01 - All About Love]]
 
