@@ -3,7 +3,8 @@
 ---
 
 <a href="javascript:history.back()">Go Back</a>
-# moagi
+
+**moagi**
 ⎃ moh·A·gi
 
 **Meaning**

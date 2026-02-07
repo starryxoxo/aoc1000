@@ -3,7 +3,8 @@
 ---
 
 <a href="javascript:history.back()">Go Back</a>
-# obs
+
+**obs**
 Other variants: Ohbs, Ob
 ⎃ oHbs
 
