@@ -1,117 +1,78 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('.etym-container').forEach(container => {
-    renderUniversalTree(container);
+    const nodes = [];
+    
+    // GRAB ALL custom tags (works 100%)
+    Array.from(container.children).forEach(el => {
+      const tag = el.tagName.toLowerCase();
+      if (tag.match(/^(.+):(.+)$/)) {
+        nodes.push(el.textContent.trim());
+      }
+    });
+    
+    if (nodes.length < 2) return;
+    
+    // Tiny SVG
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '340');
+    svg.setAttribute('height', '160');
+    svg.style.border = '1px solid #e0e0e0';
+    svg.style.borderRadius = '4px';
+    container.appendChild(svg);
+    
+    // LAYOUT: parents top, child bottom
+    const centerX = 170;
+    const parents = nodes.slice(0, -1);  // All but last
+    const child = nodes[nodes.length - 1];
+    
+    // Parents spaced evenly
+    const spacing = Math.max(60, 340 / (parents.length + 1));
+    parents.forEach((name, i) => {
+      const x = centerX - (parents.length - 1) * spacing / 2 + i * spacing;
+      drawNode(svg, x, 45, name, 'proto', false);
+    });
+    
+    // Child centered
+    drawNode(svg, centerX, 115, child, 'conlang', true);
+    
+    // Connect ALL parents → child
+    parents.forEach((_, i) => {
+      const x = centerX - (parents.length - 1) * spacing / 2 + i * spacing;
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', `M${x},57 Q${x},85 ${centerX},105`);
+      path.setAttribute('stroke', '#dadce0');
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('fill', 'none');
+      svg.appendChild(path);
+    });
   });
 });
 
-function renderUniversalTree(container) {
-  // FIXED: Parse ALL custom tags in DOM order
-  const nodes = [];
-  const walker = document.createTreeWalker(
-    container, NodeFilter.SHOW_ELEMENT,
-    { acceptNode: node => NodeFilter.FILTER_ACCEPT }
-  );
+function drawNode(svg, x, y, name, lang, isRoot) {
+  const r = isRoot ? 6 : 5;
+  const color = isRoot ? '#1a73e8' : '#34a853';
   
-  let node;
-  while (node = walker.nextNode()) {
-    const tag = node.tagName.toLowerCase();
-    const match = tag.match(/^(.+):(.+)$/);
-    if (match) {
-      nodes.push({
-        name: node.textContent.trim(),
-        type: match[1],
-        id: match[2],
-        lang: match[1] === 'langu' ? match[2] : match[2],
-        x: 0, y: 0, r: 5
-      });
-    }
-  }
+  // Circle
+  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  circle.setAttribute('cx', x); circle.setAttribute('cy', y);
+  circle.setAttribute('r', r); circle.setAttribute('fill', color);
+  svg.appendChild(circle);
   
-  if (nodes.length < 2) return;
+  // Name
+  const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  text.setAttribute('x', x); text.setAttribute('y', isRoot ? y-18 : y+16);
+  text.setAttribute('text-anchor', 'middle');
+  text.style.fontSize = '11px'; text.style.fill = '#202124';
+  text.textContent = name;
+  svg.appendChild(text);
   
-  // Auto-size SVG
-  const svgWidth = Math.max(300, Math.min(400, nodes.length * 45));
-  const svgHeight = 160;
-  
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('width', svgWidth);
-  svg.setAttribute('height', svgHeight);
-  svg.style.border = '1px solid #e0e0e0';
-  svg.style.borderRadius = '4px';
-  container.appendChild(svg);
-  
-  // FIXED LAYOUT: First N-1 = parents, last = child
-  const centerX = svgWidth / 2;
-  const parentCount = nodes.length - 1;
-  const spacing = Math.max(55, (svgWidth - 80) / parentCount);
-  
-  // Parents (top row)
-  for (let i = 0; i < parentCount; i++) {
-    nodes[i].x = centerX - (parentCount - 1) * spacing / 2 + i * spacing;
-    nodes[i].y = 45;
-  }
-  
-  // Child (bottom center)
-  nodes[parentCount].x = centerX;
-  nodes[parentCount].y = 115;
-  nodes[parentCount].r = 6;
-  nodes[parentCount].isRoot = true;
-  
-  drawUniversal(svg, nodes);
-}
-
-function drawUniversal(svg, nodes) {
-  // Links: every parent → child
-  for (let i = 0; i < nodes.length - 1; i++) {
-    const parent = nodes[i];
-    const child = nodes[nodes.length - 1];
-    
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    const cp1x = parent.x;
-    const cp1y = 80;
-    const cp2x = child.x;
-    const cp2y = 90;
-    
-    path.setAttribute('d', `M${parent.x},${parent.y+12} Q${cp1x},${cp1y} ${cp2x},${cp2y} ${child.x},${child.y-8}`);
-    path.setAttribute('stroke', '#dadce0');
-    path.setAttribute('stroke-width', '2');
-    path.setAttribute('fill', 'none');
-    svg.appendChild(path);
-  }
-  
-  // Nodes
-  nodes.forEach(node => {
-    const color = node.isRoot ? '#1a73e8' : '#34a853';
-    
-    // Circle
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('cx', node.x);
-    circle.setAttribute('cy', node.y);
-    circle.setAttribute('r', node.r);
-    circle.setAttribute('fill', color);
-    svg.appendChild(circle);
-    
-    // Name
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', node.x);
-    text.setAttribute('y', node.isRoot ? node.y - 18 : node.y + 16);
-    text.setAttribute('text-anchor', 'middle');
-    text.style.fontSize = '11px';
-    text.style.fontWeight = '500';
-    text.style.fill = '#202124';
-    text.textContent = node.name;
-    svg.appendChild(text);
-    
-    // Lang
-    const langText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    langText.setAttribute('x', node.x);
-    langText.setAttribute('y', node.y + 26);
-    langText.setAttribute('text-anchor', 'middle');
-    langText.style.fontSize = '9px';
-    langText.style.fill = '#5f6368';
-    langText.textContent = `(${node.lang})`;
-    svg.appendChild(langText);
-  });
+  // Lang
+  const langText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  langText.setAttribute('x', x); langText.setAttribute('y', y+26);
+  langText.setAttribute('text-anchor', 'middle');
+  langText.style.fontSize = '9px'; langText.style.fill = '#5f6368';
+  langText.textContent = `(${lang})`;
+  svg.appendChild(langText);
 }
 </script>
