@@ -1,75 +1,56 @@
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  document.querySelectorAll('.etym-container').forEach(container => {
-    // GET TEXT FROM ALL CUSTOM TAGS - NESTED OR NOT
-    const texts = Array.from(container.querySelectorAll('*')).map(el => {
-      if (el.tagName.toLowerCase().includes(':')) {
-        return el.textContent.trim();
-      }
-    }).filter(Boolean);
+document.addEventListener('DOMContentLoaded', e => {
+  document.querySelectorAll('.etym-container').forEach(div => {
+    const words = Array.from(div.querySelectorAll('*')).map(el => 
+      el.tagName.toLowerCase().includes(':') ? el.textContent.trim() : null
+    ).filter(Boolean);
     
-    if (texts.length < 2) return;
+    if (words.length < 2) return;
     
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('width', '360');
-    svg.setAttribute('height', '160');
-    svg.style.border = '1px solid #e0e0e0';
-    svg.style.borderRadius = '4px';
-    container.appendChild(svg);
+    const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('width','280');
+    svg.setAttribute('height','120');
+    svg.setAttribute('viewBox','0 0 280 120');
+    div.appendChild(svg);
     
-    const centerX = 180;
-    const parents = texts.slice(0, -1);  // Bobo, Obob, Obobs
-    const child = texts[texts.length-1]; // Obs
+    const parents = words.slice(0,-1);
+    const child = words.pop();
     
-    // Parents across top
-    parents.forEach((name, i) => {
-      const x = 60 + i * 80;
-      drawNode(svg, x, 45, name, 'Filipino', false);
+    // Monochrome mini Google style
+    parents.forEach((w,i) => {
+      const x = 40 + i*70;
+      drawNode(svg, x, 25, w, false);
+      drawLine(svg, x, 35, 140, 65);
     });
     
-    // Child center bottom
-    drawNode(svg, centerX, 115, child, 'conlang', true);
-    
-    // Connect each parent to child
-    parents.forEach((_, i) => {
-      const parentX = 60 + i * 80;
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('d', `M${parentX},57 Q${parentX+20},85 ${centerX},105`);
-      path.setAttribute('stroke', '#dadce0');
-      path.setAttribute('stroke-width', '2');
-      path.setAttribute('fill', 'none');
-      svg.appendChild(path);
-    });
+    drawNode(svg, 140, 75, child, true);
   });
 });
 
-function drawNode(svg, x, y, name, lang, isRoot) {
-  const r = isRoot ? 6 : 5;
-  const color = isRoot ? '#1a73e8' : '#34a853';
+function drawNode(svg, x, y, word, isChild) {
+  // Grey circle
+  const circ = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  circ.setAttribute('cx',x); circ.setAttribute('cy',y); 
+  circ.setAttribute('r',isChild?4.5:3.5);
+  circ.setAttribute('fill','#5f6368');
+  svg.appendChild(circ);
   
-  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  circle.setAttribute('cx', x);
-  circle.setAttribute('cy', y);
-  circle.setAttribute('r', r);
-  circle.setAttribute('fill', color);
-  svg.appendChild(circle);
-  
-  const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-  text.setAttribute('x', x);
-  text.setAttribute('y', isRoot ? y-18 : y+16);
-  text.setAttribute('text-anchor', 'middle');
-  text.style.fontSize = '11px';
-  text.style.fill = '#202124';
-  text.textContent = name;
-  svg.appendChild(text);
-  
-  const langText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-  langText.setAttribute('x', x);
-  langText.setAttribute('y', y+26);
-  langText.setAttribute('text-anchor', 'middle');
-  langText.style.fontSize = '9px';
-  langText.style.fill = '#5f6368';
-  langText.textContent = `(${lang})`;
-  svg.appendChild(langText);
+  // Word text
+  const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+  txt.setAttribute('x',x); txt.setAttribute('y',isChild?y-12:y+12);
+  txt.setAttribute('text-anchor','middle');
+  txt.style.fontSize = '10px';
+  txt.style.fill = '#202124';
+  txt.textContent = word;
+  svg.appendChild(txt);
+}
+
+function drawLine(svg, x1, y1, x2, y2) {
+  const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d',`M${x1},${y1} Q${x1+10},${y1+20} ${x2},${y2}`);
+  path.setAttribute('stroke','#dadce0');
+  path.setAttribute('stroke-width','1.5');
+  path.setAttribute('fill','none');
+  svg.appendChild(path);
 }
 </script>
