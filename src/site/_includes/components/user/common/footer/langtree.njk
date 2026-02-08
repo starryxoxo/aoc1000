@@ -1,0 +1,124 @@
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.etym-container').forEach(container => {
+    renderCompactTree(container);
+  });
+});
+
+function renderCompactTree(container) {
+  // Parse custom tags
+  const treeData = parseCustomTags(container);
+  if (!treeData.children.length) return;
+  
+  // Create compact SVG (Google Dictionary size)
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', '320');
+  svg.setAttribute('height', '160');
+  svg.style.border = '1px solid #e0e0e0';
+  svg.style.borderRadius = '4px';
+  container.appendChild(svg);
+  
+  // Layout and draw
+  const nodes = layoutCompact(treeData);
+  drawCompact(svg, nodes);
+}
+
+function parseCustomTags(container) {
+  const nodes = Array.from(container.querySelectorAll('*')).map(el => {
+    const tag = el.tagName.toLowerCase();
+    const match = tag.match(/^(.+):(.+)$/);
+    return match ? {
+      name: el.textContent.trim(),
+      type: match[1],
+      id: match[2],
+      lang: match[1] === 'langu' ? match[2] : 'proto',
+      children: []
+    } : null;
+  }).filter(Boolean);
+  
+  // Simple tree: first nodes = parents, later = children
+  const root = { children: [] };
+  nodes.forEach((node, i) => {
+    if (i === 0) root.children = [node];
+    else root.children[0].children.push(node);
+  });
+  
+  return root;
+}
+
+function layoutCompact(treeData) {
+  const nodes = [];
+  const centerX = 160;
+  
+  // Root nodes (top level)
+  treeData.children[0].children.slice(0,2).forEach((node, i) => {
+    nodes.push({
+      ...node,
+      x: centerX - 60 + i * 60,
+      y: 40,
+      r: 5
+    });
+  });
+  
+  // Child node (bottom)
+  if (treeData.children[0].children[2]) {
+    nodes.push({
+      ...treeData.children[0].children[2],
+      x: centerX,
+      y: 110,
+      r: 6,
+      isRoot: true
+    });
+  }
+  
+  return nodes;
+}
+
+function drawCompact(svg, nodes) {
+  // Draw links first
+  nodes.forEach((node, i) => {
+    if (!node.isRoot && i < nodes.length - 1) {
+      const child = nodes.find(n => n.isRoot);
+      if (child) {
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', `M ${node.x} ${node.y + 10} Q ${node.x} 75 ${child.x} ${child.y - 8}`);
+        path.setAttribute('stroke', '#dadce0');
+        path.setAttribute('stroke-width', '2');
+        path.setAttribute('fill', 'none');
+        svg.appendChild(path);
+      }
+    }
+  });
+  
+  // Draw nodes
+  nodes.forEach(node => {
+    // Circle
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', node.x);
+    circle.setAttribute('cy', node.y);
+    circle.setAttribute('r', node.r);
+    circle.setAttribute('fill', node.isRoot ? '#1a73e8' : '#34a853');
+    svg.appendChild(circle);
+    
+    // Label
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', node.x);
+    text.setAttribute('y', node.isRoot ? node.y - 15 : node.y + 18);
+    text.setAttribute('text-anchor', 'middle');
+    text.style.fontSize = '11px';
+    text.style.fontWeight = '500';
+    text.style.fill = '#202124';
+    text.textContent = node.name;
+    svg.appendChild(text);
+    
+    // Lang tag
+    const langText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    langText.setAttribute('x', node.x);
+    langText.setAttribute('y', node.y + 28);
+    langText.setAttribute('text-anchor', 'middle');
+    langText.style.fontSize = '9px';
+    langText.style.fill = '#5f6368';
+    langText.textContent = `(${node.lang})`;
+    svg.appendChild(langText);
+  });
+}
+</script>
