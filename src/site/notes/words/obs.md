@@ -19,7 +19,14 @@ Stupid, unintelligent,  unintellectual
 **Origin**
 Of Filipino origin: *Bobo* (offensive), *stupid*
 
-*Bobo* > Obob > Obobs > **Obs**
+<div class="etym-container">
+  <langu:Filipino>
+    <word:1>Bobo</word:1>
+    <word:2>Obob</word:2>
+    <word:3>Obobs</word:3>
+  </langu:Filipino>
+  <child:1>Obs</child:1>
+</div>
 
 ***
 # Other words to surf through
