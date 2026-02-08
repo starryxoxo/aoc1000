@@ -1,46 +1,40 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('.etym-container').forEach(container => {
-    const nodes = [];
-    
-    // GRAB ALL custom tags (works 100%)
-    Array.from(container.children).forEach(el => {
-      const tag = el.tagName.toLowerCase();
-      if (tag.match(/^(.+):(.+)$/)) {
-        nodes.push(el.textContent.trim());
+    // GET TEXT FROM ALL CUSTOM TAGS - NESTED OR NOT
+    const texts = Array.from(container.querySelectorAll('*')).map(el => {
+      if (el.tagName.toLowerCase().includes(':')) {
+        return el.textContent.trim();
       }
-    });
+    }).filter(Boolean);
     
-    if (nodes.length < 2) return;
+    if (texts.length < 2) return;
     
-    // Tiny SVG
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('width', '340');
+    svg.setAttribute('width', '360');
     svg.setAttribute('height', '160');
     svg.style.border = '1px solid #e0e0e0';
     svg.style.borderRadius = '4px';
     container.appendChild(svg);
     
-    // LAYOUT: parents top, child bottom
-    const centerX = 170;
-    const parents = nodes.slice(0, -1);  // All but last
-    const child = nodes[nodes.length - 1];
+    const centerX = 180;
+    const parents = texts.slice(0, -1);  // Bobo, Obob, Obobs
+    const child = texts[texts.length-1]; // Obs
     
-    // Parents spaced evenly
-    const spacing = Math.max(60, 340 / (parents.length + 1));
+    // Parents across top
     parents.forEach((name, i) => {
-      const x = centerX - (parents.length - 1) * spacing / 2 + i * spacing;
-      drawNode(svg, x, 45, name, 'proto', false);
+      const x = 60 + i * 80;
+      drawNode(svg, x, 45, name, 'Filipino', false);
     });
     
-    // Child centered
+    // Child center bottom
     drawNode(svg, centerX, 115, child, 'conlang', true);
     
-    // Connect ALL parents → child
+    // Connect each parent to child
     parents.forEach((_, i) => {
-      const x = centerX - (parents.length - 1) * spacing / 2 + i * spacing;
+      const parentX = 60 + i * 80;
       const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-      path.setAttribute('d', `M${x},57 Q${x},85 ${centerX},105`);
+      path.setAttribute('d', `M${parentX},57 Q${parentX+20},85 ${centerX},105`);
       path.setAttribute('stroke', '#dadce0');
       path.setAttribute('stroke-width', '2');
       path.setAttribute('fill', 'none');
@@ -53,25 +47,28 @@ function drawNode(svg, x, y, name, lang, isRoot) {
   const r = isRoot ? 6 : 5;
   const color = isRoot ? '#1a73e8' : '#34a853';
   
-  // Circle
   const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-  circle.setAttribute('cx', x); circle.setAttribute('cy', y);
-  circle.setAttribute('r', r); circle.setAttribute('fill', color);
+  circle.setAttribute('cx', x);
+  circle.setAttribute('cy', y);
+  circle.setAttribute('r', r);
+  circle.setAttribute('fill', color);
   svg.appendChild(circle);
   
-  // Name
   const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-  text.setAttribute('x', x); text.setAttribute('y', isRoot ? y-18 : y+16);
+  text.setAttribute('x', x);
+  text.setAttribute('y', isRoot ? y-18 : y+16);
   text.setAttribute('text-anchor', 'middle');
-  text.style.fontSize = '11px'; text.style.fill = '#202124';
+  text.style.fontSize = '11px';
+  text.style.fill = '#202124';
   text.textContent = name;
   svg.appendChild(text);
   
-  // Lang
   const langText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-  langText.setAttribute('x', x); langText.setAttribute('y', y+26);
+  langText.setAttribute('x', x);
+  langText.setAttribute('y', y+26);
   langText.setAttribute('text-anchor', 'middle');
-  langText.style.fontSize = '9px'; langText.style.fill = '#5f6368';
+  langText.style.fontSize = '9px';
+  langText.style.fill = '#5f6368';
   langText.textContent = `(${lang})`;
   svg.appendChild(langText);
 }
