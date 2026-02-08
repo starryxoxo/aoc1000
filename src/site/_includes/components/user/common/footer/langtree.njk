@@ -1,87 +1,79 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('.etym-container').forEach(container => {
-    renderCompactTree(container);
+    renderUniversalTree(container);
   });
 });
 
-function renderCompactTree(container) {
-  // Parse custom tags
-  const treeData = parseCustomTags(container);
-  if (!treeData.children.length) return;
+function renderUniversalTree(container) {
+  // Parse ALL custom tags → flat list
+  const nodes = Array.from(container.querySelectorAll('*')).map(el => {
+    const tag = el.tagName.toLowerCase();
+    const match = tag.match(/^(.+):(.+)$/);
+    if (match) {
+      return {
+        name: el.textContent.trim(),
+        type: match[1],
+        id: match[2],
+        lang: match[1] === 'langu' ? match[2] : match[2],
+        x: 0, y: 0, r: 5
+      };
+    }
+  }).filter(Boolean);
   
-  // Create compact SVG (Google Dictionary size)
+  if (nodes.length < 1) return;
+  
+  // Auto-size SVG based on node count
+  const svgWidth = Math.max(280, nodes.length * 40);
+  const svgHeight = nodes.length > 3 ? 180 : 140;
+  
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('width', '320');
-  svg.setAttribute('height', '160');
+  svg.setAttribute('width', svgWidth);
+  svg.setAttribute('height', svgHeight);
   svg.style.border = '1px solid #e0e0e0';
   svg.style.borderRadius = '4px';
   container.appendChild(svg);
   
-  // Layout and draw
-  const nodes = layoutCompact(treeData);
-  drawCompact(svg, nodes);
+  // UNIVERSAL LAYOUT: parents on top row, children below
+  layoutUniversal(nodes, svgWidth, svgHeight);
+  
+  // Draw everything
+  drawUniversal(svg, nodes);
 }
 
-function parseCustomTags(container) {
-  const nodes = Array.from(container.querySelectorAll('*')).map(el => {
-    const tag = el.tagName.toLowerCase();
-    const match = tag.match(/^(.+):(.+)$/);
-    return match ? {
-      name: el.textContent.trim(),
-      type: match[1],
-      id: match[2],
-      lang: match[1] === 'langu' ? match[2] : 'proto',
-      children: []
-    } : null;
-  }).filter(Boolean);
+function layoutUniversal(nodes, width, height) {
+  const centerX = width / 2;
+  const parentCount = Math.min(nodes.length - 1, 4); // Up to 4 parents
+  const spacing = Math.max(50, (width - 60) / parentCount);
   
-  // Simple tree: first nodes = parents, later = children
-  const root = { children: [] };
-  nodes.forEach((node, i) => {
-    if (i === 0) root.children = [node];
-    else root.children[0].children.push(node);
-  });
-  
-  return root;
-}
-
-function layoutCompact(treeData) {
-  const nodes = [];
-  const centerX = 160;
-  
-  // Root nodes (top level)
-  treeData.children[0].children.slice(0,2).forEach((node, i) => {
-    nodes.push({
-      ...node,
-      x: centerX - 60 + i * 60,
-      y: 40,
-      r: 5
-    });
-  });
-  
-  // Child node (bottom)
-  if (treeData.children[0].children[2]) {
-    nodes.push({
-      ...treeData.children[0].children[2],
-      x: centerX,
-      y: 110,
-      r: 6,
-      isRoot: true
-    });
+  // Row 1: Parents (first N-1 nodes)
+  for (let i = 0; i < Math.min(parentCount, nodes.length - 1); i++) {
+    nodes[i].x = centerX - (parentCount - 1) * spacing / 2 + i * spacing;
+    nodes[i].y = 40;
   }
   
-  return nodes;
+  // Row 2: Single child (last node) centered below
+  if (nodes.length > 1) {
+    nodes[nodes.length - 1].r = 6;
+    nodes[nodes.length - 1].x = centerX;
+    nodes[nodes.length - 1].y = height - 40;
+    nodes[nodes.length - 1].isRoot = true;
+  }
 }
 
-function drawCompact(svg, nodes) {
-  // Draw links first
+function drawUniversal(svg, nodes) {
+  // Draw curved links: every parent → single child
   nodes.forEach((node, i) => {
-    if (!node.isRoot && i < nodes.length - 1) {
+    if (!node.isRoot && nodes.some(n => n.isRoot)) {
       const child = nodes.find(n => n.isRoot);
       if (child) {
+        const cp1x = node.x;
+        const cp1y = (node.y + child.y) / 2 - 10;
+        const cp2x = child.x;
+        const cp2y = cp1y;
+        
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', `M ${node.x} ${node.y + 10} Q ${node.x} 75 ${child.x} ${child.y - 8}`);
+        path.setAttribute('d', `M${node.x},${node.y + 10} Q${cp1x},${cp1y} ${cp2x},${cp2y} ${child.x},${child.y - 8}`);
         path.setAttribute('stroke', '#dadce0');
         path.setAttribute('stroke-width', '2');
         path.setAttribute('fill', 'none');
@@ -90,20 +82,23 @@ function drawCompact(svg, nodes) {
     }
   });
   
-  // Draw nodes
+  // Draw all nodes
   nodes.forEach(node => {
+    const color = node.isRoot ? '#1a73e8' : '#34a853';
+    const r = node.r || 5;
+    
     // Circle
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('cx', node.x);
     circle.setAttribute('cy', node.y);
-    circle.setAttribute('r', node.r);
-    circle.setAttribute('fill', node.isRoot ? '#1a73e8' : '#34a853');
+    circle.setAttribute('r', r);
+    circle.setAttribute('fill', color);
     svg.appendChild(circle);
     
-    // Label
+    // Name
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('x', node.x);
-    text.setAttribute('y', node.isRoot ? node.y - 15 : node.y + 18);
+    text.setAttribute('y', node.isRoot ? node.y - 18 : node.y + 16);
     text.setAttribute('text-anchor', 'middle');
     text.style.fontSize = '11px';
     text.style.fontWeight = '500';
@@ -111,10 +106,10 @@ function drawCompact(svg, nodes) {
     text.textContent = node.name;
     svg.appendChild(text);
     
-    // Lang tag
+    // Language tag
     const langText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     langText.setAttribute('x', node.x);
-    langText.setAttribute('y', node.y + 28);
+    langText.setAttribute('y', node.y + 26);
     langText.setAttribute('text-anchor', 'middle');
     langText.style.fontSize = '9px';
     langText.style.fill = '#5f6368';
