@@ -20,13 +20,15 @@ Stupid, unintelligent,  unintellectual
 Of Filipino origin: *Bobo* (offensive), *stupid*
 
 <div class="etym-container">
-  <langu:Filipino>
-    <word:1>Bobo</word:1>
-    <word:2>Obob</word:2>
-    <word:3>Obobs</word:3>
-  </langu:Filipino>
-  <child:1>Obs</child:1>
-</div>
+    <langu name="Filipino">
+      <word data-word="Bobo" level="1"></word>
+      <word data-word="Obob" level="2"></word>
+      <word data-word="Obobs" level="3"></word>
+    </langu>
+    <child level="1" parent="0">
+      <word data-word="Obs" level="1"></word>
+    </child>
+  </div>
 
 ***
 # Other words to surf through
