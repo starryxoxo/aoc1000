@@ -12,6 +12,47 @@ body {
     //  }
 }
 
+    .etym-container {
+      --node-w: 65px; --node-h: 22px; --gap: 10px; --bg: #fafbfc;
+      display: flex; align-items: flex-end; gap: var(--gap); padding: 32px;
+      border: 1px solid #dfe1e5; border-radius: 12px; background: var(--bg);
+      font: 500 13px system-ui; max-width: max-content;
+      position: relative;
+    }
+
+    langu, child {
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      position: relative; min-height: 50px;
+    }
+
+    word {
+      width: var(--node-w); height: var(--node-h); background: white;
+      border: 1px solid #e0e4e8; border-radius: 6px; position: relative;
+      font-size: 0; line-height: 0;
+      box-shadow: 0 1px 2px rgb(0 0 0 / 8%);
+      transition: all 0.15s ease;
+    }
+
+    word::before {
+      content: attr(data-word);
+      position: absolute; inset: 0; display: flex; align-items: center;
+      justify-content: center; font-size: 12px; font-weight: 500;
+      color: #1a1a1b; text-align: center; padding: 0 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* Language label */
+    langu::after {
+      content: attr(name); position: absolute; top: -20px;
+      font-size: 11px; font-weight: 600; color: #3c4043;
+    }
+
+    /* Hover effect */
+    word:hover {
+      background: #e8f0fe; border-color: #4285f4; transform: translateY(-1px);
+      box-shadow: 0 2px 6px rgb(0 0 0 / 15%);
+    }
+
 /* cool translucent glassy navbar */
 
 .navbar {
