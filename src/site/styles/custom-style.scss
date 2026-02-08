@@ -13,11 +13,18 @@ body {
 }
 
     .etym-container {
-      --node-w: 65px; --node-h: 22px; --gap: 10px; --bg: #fafbfc;
-      display: flex; align-items: flex-end; gap: var(--gap); padding: 32px;
-      border: 1px solid #dfe1e5; border-radius: 12px; background: var(--bg);
-      font: 500 13px system-ui; max-width: max-content;
+      --node-w: 65px;
+      --node-h: 22px; 
+      --gap: 10px; 
+      --bg: #fafbfc;
+      display: flex;
+      align-items: flex-end;
+      gap: var(--gap);
+      background: var(--bg);
+      font: 500 13px system-ui;
+      max-width: max-content;
       position: relative;
+      margin: 12px;
     }
 
     langu, child {
