@@ -4,13 +4,15 @@
 
 <a href="javascript:history.back()">Go Back</a>
 
-**moagi**
+**moagi** • *v.*
 ⎃ moh·A·gi
 
 **Meaning**
 To pass through; to let through.
 
-**Synonyms**
+**Usage**
+"**Moagi** ang mga cutie."
+(Let the cuties pass through)
 
 **Origin**
 Of Cebuano origin: *Moagi,* Agi

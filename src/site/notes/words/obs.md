@@ -4,17 +4,20 @@
 
 <a href="javascript:history.back()">Go Back</a>
 
-**obs**
+**obs** • *adv.*
+Superlative: napaka(-)obs
 Other variants: Ohbs, Ob
 ⎃ oHbs
 
 **Meaning**
 Stupid, unintelligent,  unintellectual
 
-**Synonyms**
+**Usage**
+"Ang **obs** naman."
+(*That's stupid*)
 
 **Origin**
-Of Filipino origin: *Bobo*
+Of Filipino origin: *Bobo* (offensive), *stupid*
 
 *Bobo* > Obob > Obobs > **Obs**
 

@@ -8,5 +8,5 @@ The (uncommon) slang dictionary.
 
 ***
 # Words
-[[words/obs\|obs]] *n.* Stupid
+[[words/obs\|obs]] *adv.* Stupid
 [[words/moagi\|moagi]] *v.* To pass through
