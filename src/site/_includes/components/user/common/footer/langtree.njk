@@ -6,26 +6,33 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function renderUniversalTree(container) {
-  // Parse ALL custom tags → flat list
-  const nodes = Array.from(container.querySelectorAll('*')).map(el => {
-    const tag = el.tagName.toLowerCase();
+  // FIXED: Parse ALL custom tags in DOM order
+  const nodes = [];
+  const walker = document.createTreeWalker(
+    container, NodeFilter.SHOW_ELEMENT,
+    { acceptNode: node => NodeFilter.FILTER_ACCEPT }
+  );
+  
+  let node;
+  while (node = walker.nextNode()) {
+    const tag = node.tagName.toLowerCase();
     const match = tag.match(/^(.+):(.+)$/);
     if (match) {
-      return {
-        name: el.textContent.trim(),
+      nodes.push({
+        name: node.textContent.trim(),
         type: match[1],
         id: match[2],
         lang: match[1] === 'langu' ? match[2] : match[2],
         x: 0, y: 0, r: 5
-      };
+      });
     }
-  }).filter(Boolean);
+  }
   
-  if (nodes.length < 1) return;
+  if (nodes.length < 2) return;
   
-  // Auto-size SVG based on node count
-  const svgWidth = Math.max(280, nodes.length * 40);
-  const svgHeight = nodes.length > 3 ? 180 : 140;
+  // Auto-size SVG
+  const svgWidth = Math.max(300, Math.min(400, nodes.length * 45));
+  const svgHeight = 160;
   
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('width', svgWidth);
@@ -34,64 +41,54 @@ function renderUniversalTree(container) {
   svg.style.borderRadius = '4px';
   container.appendChild(svg);
   
-  // UNIVERSAL LAYOUT: parents on top row, children below
-  layoutUniversal(nodes, svgWidth, svgHeight);
+  // FIXED LAYOUT: First N-1 = parents, last = child
+  const centerX = svgWidth / 2;
+  const parentCount = nodes.length - 1;
+  const spacing = Math.max(55, (svgWidth - 80) / parentCount);
   
-  // Draw everything
+  // Parents (top row)
+  for (let i = 0; i < parentCount; i++) {
+    nodes[i].x = centerX - (parentCount - 1) * spacing / 2 + i * spacing;
+    nodes[i].y = 45;
+  }
+  
+  // Child (bottom center)
+  nodes[parentCount].x = centerX;
+  nodes[parentCount].y = 115;
+  nodes[parentCount].r = 6;
+  nodes[parentCount].isRoot = true;
+  
   drawUniversal(svg, nodes);
 }
 
-function layoutUniversal(nodes, width, height) {
-  const centerX = width / 2;
-  const parentCount = Math.min(nodes.length - 1, 4); // Up to 4 parents
-  const spacing = Math.max(50, (width - 60) / parentCount);
-  
-  // Row 1: Parents (first N-1 nodes)
-  for (let i = 0; i < Math.min(parentCount, nodes.length - 1); i++) {
-    nodes[i].x = centerX - (parentCount - 1) * spacing / 2 + i * spacing;
-    nodes[i].y = 40;
-  }
-  
-  // Row 2: Single child (last node) centered below
-  if (nodes.length > 1) {
-    nodes[nodes.length - 1].r = 6;
-    nodes[nodes.length - 1].x = centerX;
-    nodes[nodes.length - 1].y = height - 40;
-    nodes[nodes.length - 1].isRoot = true;
-  }
-}
-
 function drawUniversal(svg, nodes) {
-  // Draw curved links: every parent → single child
-  nodes.forEach((node, i) => {
-    if (!node.isRoot && nodes.some(n => n.isRoot)) {
-      const child = nodes.find(n => n.isRoot);
-      if (child) {
-        const cp1x = node.x;
-        const cp1y = (node.y + child.y) / 2 - 10;
-        const cp2x = child.x;
-        const cp2y = cp1y;
-        
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', `M${node.x},${node.y + 10} Q${cp1x},${cp1y} ${cp2x},${cp2y} ${child.x},${child.y - 8}`);
-        path.setAttribute('stroke', '#dadce0');
-        path.setAttribute('stroke-width', '2');
-        path.setAttribute('fill', 'none');
-        svg.appendChild(path);
-      }
-    }
-  });
+  // Links: every parent → child
+  for (let i = 0; i < nodes.length - 1; i++) {
+    const parent = nodes[i];
+    const child = nodes[nodes.length - 1];
+    
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const cp1x = parent.x;
+    const cp1y = 80;
+    const cp2x = child.x;
+    const cp2y = 90;
+    
+    path.setAttribute('d', `M${parent.x},${parent.y+12} Q${cp1x},${cp1y} ${cp2x},${cp2y} ${child.x},${child.y-8}`);
+    path.setAttribute('stroke', '#dadce0');
+    path.setAttribute('stroke-width', '2');
+    path.setAttribute('fill', 'none');
+    svg.appendChild(path);
+  }
   
-  // Draw all nodes
+  // Nodes
   nodes.forEach(node => {
     const color = node.isRoot ? '#1a73e8' : '#34a853';
-    const r = node.r || 5;
     
     // Circle
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('cx', node.x);
     circle.setAttribute('cy', node.y);
-    circle.setAttribute('r', r);
+    circle.setAttribute('r', node.r);
     circle.setAttribute('fill', color);
     svg.appendChild(circle);
     
@@ -106,7 +103,7 @@ function drawUniversal(svg, nodes) {
     text.textContent = node.name;
     svg.appendChild(text);
     
-    // Language tag
+    // Lang
     const langText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     langText.setAttribute('x', node.x);
     langText.setAttribute('y', node.y + 26);
