@@ -4,170 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lottery Hash Decoder</title>
-
-<style>
-    * {
-        box-sizing: border-box;
-    }
-
-    body {
-        margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        background: linear-gradient(135deg, #141e30, #243b55);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        min-height: 100vh;
-        padding: 20px;
-        color: white;
-    }
-
-    .card {
-        background: rgba(255, 255, 255, 0.08);
-        backdrop-filter: blur(10px);
-        border-radius: 20px;
-        padding: 25px;
-        width: 100%;
-        max-width: 420px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-    }
-
-    h2 {
-        margin-top: 0;
-        text-align: center;
-        font-weight: 600;
-    }
-
-    input {
-        width: 100%;
-        padding: 14px;
-        border-radius: 12px;
-        border: none;
-        font-size: 16px;
-        margin-top: 10px;
-        outline: none;
-    }
-
-    button {
-        width: 100%;
-        padding: 14px;
-        margin-top: 15px;
-        border-radius: 12px;
-        border: none;
-        font-size: 16px;
-        font-weight: 600;
-        cursor: pointer;
-        background: #00c6ff;
-        color: black;
-        transition: 0.2s ease;
-    }
-
-    button:active {
-        transform: scale(0.97);
-    }
-
-    .result {
-        margin-top: 20px;
-        padding: 15px;
-        border-radius: 15px;
-        background: rgba(0,0,0,0.3);
-        font-size: 16px;
-    }
-
-    .numbers {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
-        margin-top: 10px;
-    }
-
-    .num-box {
-        background: #1f2937;
-        padding: 12px;
-        border-radius: 12px;
-        text-align: center;
-        font-weight: bold;
-        font-size: 18px;
-    }
-
-    .meta {
-        margin-top: 15px;
-        font-size: 13px;
-        opacity: 0.8;
-        text-align: center;
-    }
-</style>
+<style>*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:linear-gradient(135deg,#141e30,#243b55);display:flex;justify-content:center;align-items:center;min-height:100vh;padding:20px;color:white}.card{background:rgba(255,255,255,.08);backdrop-filter:blur(10px);border-radius:20px;padding:25px;width:100%;max-width:420px;box-shadow:0 10px 30px rgba(0,0,0,.4)}h2{margin-top:0;text-align:center;font-weight:600}input{width:100%;padding:14px;border-radius:12px;border:none;font-size:16px;margin-top:10px;outline:none;font-family:monospace}button{width:100%;padding:14px;margin-top:15px;border-radius:12px;border:none;font-size:16px;font-weight:600;cursor:pointer;background:#00c6ff;color:black;transition:.2s ease}button:active{transform:scale(.97)}button:disabled{opacity:.5;cursor:not-allowed}.result{margin-top:20px;padding:15px;border-radius:15px;background:rgba(0,0,0,.3);font-size:16px;display:none}.numbers{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}.num-box{background:#1f2937;padding:12px;border-radius:12px;text-align:center;font-weight:700;font-size:18px}.meta{margin-top:15px;font-size:13px;opacity:.8;text-align:center}.error{padding:15px;border-radius:12px;background:rgba(220,53,69,.3);margin-top:15px;display:none}</style>
 </head>
 <body>
-
 <div class="card">
-    <h2>Lottery Hash Decoder</h2>
-
-    <input type="text" id="hashInput" placeholder="Paste your hash here">
-    <button onclick="decodeHash()">Decode Hash</button>
-
-    <div class="result" id="output" style="display:none;">
-        <strong>Decoded Numbers</strong>
-        <div class="numbers" id="numbersGrid"></div>
-        <div class="meta" id="metaInfo"></div>
-    </div>
+<h2>🔓 Lottery Hash Decoder</h2>
+<input type="text" id="hashInput" placeholder="0.a1kb2z...20260222132600.nz">
+<button onclick="decodeHash()">Decode Hash</button>
+<div class="error" id="error"></div>
+<div class="result" id="output">
+<strong>✅ Decoded Ticket</strong>
+<div class="numbers" id="numbersGrid"></div>
+<div class="meta" id="metaInfo"></div>
+</div>
 </div>
 
-<script>
-    const encodeTable = 'abcdefghijklmnopqrstuvwxyz0123456789';
-    const decodeTable = {};
-
-    for (let i = 0; i < encodeTable.length; i++) {
-        decodeTable[encodeTable[i]] = i;
-    }
-
-    function decodeHash() {
-        const hash = document.getElementById('hashInput').value.trim();
-        const output = document.getElementById('output');
-        const numbersGrid = document.getElementById('numbersGrid');
-        const metaInfo = document.getElementById('metaInfo');
-
-        if (!hash.startsWith('0.') && !hash.startsWith('1.')) {
-            alert("Invalid hash format.");
-            return;
-        }
-
-        const blockData = hash.split('.')[1];
-
-        const result = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
-
-        for (let i = 0; i < 6; i++) {
-            const letter = blockData[i * 3];
-            const code1 = blockData[i * 3 + 1];
-            const code2 = blockData[i * 3 + 2];
-
-            const value = decodeTable[code1] +
-                          (decodeTable[code2] * encodeTable.length);
-
-            result[letter.toUpperCase()] = value;
-        }
-
-        numbersGrid.innerHTML = `
-            <div class="num-box">A: ${result.A}</div>
-            <div class="num-box">B: ${result.B}</div>
-            <div class="num-box">C: ${result.C}</div>
-            <div class="num-box">D: ${result.D}</div>
-            <div class="num-box">E: ${result.E}</div>
-            <div class="num-box">F: ${result.F}</div>
-        `;
-
-        // Extract timestamp + AM/PM flag
-        const timestamp = blockData.slice(18, 32);
-        const suffix = hash.endsWith('.nz') ? 'PM' : 'AM';
-
-        metaInfo.innerHTML = `
-            Timestamp: ${timestamp}<br>
-            Session: ${suffix}
-        `;
-
-        output.style.display = "block";
-    }
-</script>
-
+<script>const encodeTable='abcdefghijklmnopqrstuvwxyz0123456789';const decodeTable={};for(let i=0;i<encodeTable.length;i++)decodeTable[encodeTable[i]]=i;function decodeHash(){const e=document.getElementById('hashInput').value.trim(),t=document.getElementById('output'),n=document.getElementById('numbersGrid'),r=document.getElementById('metaInfo'),o=document.getElementById('error'),a=document.querySelector('button');o.style.display='none';t.style.display='none';a.disabled=true;a.textContent='Decoding...';if(!e){showError('Enter hash');return done(a)}if(!e.startsWith('0.')&&!e.startsWith('1.')){showError('Hash must start with 0. or 1.');return done(a)}const[prefix,blockData,...rest]=e.split('.');if(blockData.length<30){showError('Invalid hash length');return done(a)}try{const result={A:0,B:0,C:0,D:0,E:0,F:0};for(let i=0;i<6;i++){const letter=blockData[i*3],code1=blockData[i*3+1],code2=blockData[i*3+2];result[letter.toUpperCase()]=decodeTable[code1]+decodeTable[code2]*encodeTable.length}const timestampStr=blockData.slice(18,32);const phTime=parsePHTime(timestampStr);const drawType=e.endsWith('.nz')?'🌙 Night':'☀️ Day';n.innerHTML=`<div class="num-box">A: ${result.A}</div><div class="num-box">B: ${result.B}</div><div class="num-box">C: ${result.C}</div><div class="num-box">D: ${result.D}</div><div class="num-box">E: ${result.E}</div><div class="num-box">F: ${result.F}</div>`;r.innerHTML=`<strong>PH Time (UTC+8):</strong><br>${phTime.toLocaleString('en-PH',{timeZone:'Asia/Manila'})}<br><strong>Draw:</strong> ${drawType}`;t.style.display='block'}catch(err){showError('Decode failed: '+err.message)}done(a)}function parsePHTime(ts){const year=ts.slice(0,4),month=ts.slice(4,6),day=ts.slice(6,8),hour=ts.slice(8,10),min=ts.slice(10,12),sec=ts.slice(12,14);return new Date(Date.UTC(year,month-1,day,parseInt(hour)+8,parseInt(min),parseInt(sec)))}function showError(msg){document.getElementById('error').innerHTML=msg;document.getElementById('error').style.display='block'}function done(btn){btn.disabled=false;btn.textContent='Decode Hash'}document.getElementById('hashInput').addEventListener('keypress',e=>e.key==='Enter'&&decodeHash());document.getElementById('hashInput').addEventListener('paste',()=>setTimeout(decodeHash,100))</script>
 </body>
 </html>
