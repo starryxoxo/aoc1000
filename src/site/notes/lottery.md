@@ -1,5 +1,5 @@
 ---
-{"dg-publish":true,"permalink":"/lottery/"}
+{"dg-publish":true,"permalink":"/lottery1/"}
 ---
 
 <!DOCTYPE html>
