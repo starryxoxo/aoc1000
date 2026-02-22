@@ -2,8 +2,6 @@
 {"dg-publish":true,"permalink":"/lottery1/"}
 ---
 
-<!DOCTYPE html>
-<html lang="en">
 <head>
     <title>Lottery Ticket</title>
     <style>
@@ -436,4 +434,3 @@
         window.decodeLotteryHash = decodeHash;
     </script>
 </body>
-</html>
