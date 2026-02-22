@@ -6,6 +6,7 @@
 
 **FAQ Station**
 How may we help you?
+Click the ⌕ button to search through the documentation.
 
 # How lottery ensures fairness
 
@@ -22,10 +23,10 @@ To ensure fairness, **the lottery is drawn before the actual play**. This avoids
  
 ② **Pick your numbers**. There are six ticket blocks that you will need to fill up. Namely, A through F.
 - You can't "undo" in the sense of going back to the previous ticket block. **The "undo" button means you're deselecting your current option**.
-- Once you transfer to the next ticket block, you can't go back to change it. **Simply get a new ticket by refreshing the page**.
+- Once you transfer to the next ticket block, you can't go back to change it. **Simply get a new ticket to change your choices**.
 
 ③ **Read the summary**. The summary is the collection of your chosen numbers from A to F.
-- If you think something doesn't match up, **refresh the page to get a new ticket**.
+- If you think something doesn't match up, **get a new ticket**.
 
 ④ **Take note of your numbers**. Once you get a new ticket, you can never get the numbers back again.
 
@@ -45,12 +46,12 @@ To ensure fairness, **the lottery is drawn before the actual play**. This avoids
 
 | Numbers | Prize |
 | ------- | ----- |
-| 1/6     | 6 DC  |
-| 2/6     | 8 DC  |
-| 3/6     | 15 DC |
-| 4/6     | 18 DC |
+| 1/6     | 10 DC |
+| 2/6     | 15 DC |
+| 3/6     | 18 DC |
+| 4/6     | 20 DC |
 | 5/6     | 25 DC |
-| 6/6     | 💎 50 |
+| 6/6     | 40 DC |
 
 ---
 
