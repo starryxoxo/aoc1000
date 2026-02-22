@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lottery Ticket</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: inherit;
+            background: #f5f5f5;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .home-screen {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .game-select {
+            display: flex;
+            gap: 20px;
+        }
+
+        .game-btn {
+            padding: 15px 30px;
+            border: 1px solid #333;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .game-btn.active, .game-btn:hover {
+            background: #333;
+            color: white;
+        }
+
+        .ticket-screen {
+            display: none;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .ticket-screen.active {
+            display: block;
+        }
+
+        .ticket-block {
+            border: 1px solid #333;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .letter-container {
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+
+        .letter {
+            font-size: 3rem;
+            font-weight: bold;
+            line-height: 1;
+            display: block;
+        }
+
+        .numbers-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            max-height: 280px;
+        }
+
+        .number-btn {
+            aspect-ratio: 1;
+            border: 1px solid #333;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .number-btn.picked {
+            opacity: 0.3;
+            background: #333;
+            color: white;
+        }
+
+        .number-btn:hover:not(.picked) {
+            background: #333;
+            color: white;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 1px;
+            margin-top: 20px;
+        }
+
+        .control-btn {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #333;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            max-width: 120px;
+        }
+
+        .control-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .control-btn.active {
+            background: #28a745;
+            color: white;
+        }
+
+        .confirm-screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .confirm-screen.active {
+            display: flex;
+        }
+
+        .ticket-summary {
+            border: 1px solid #333;
+            width: 100%;
+            padding: 20px;
+        }
+
+        .summary-line {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .summary-line:last-child {
+            border-bottom: none;
+        }
+
+        .hash-section {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .hash-display {
+            background: #333;
+            color: white;
+            padding: 12px;
+            word-break: break-all;
+            margin-bottom: 10px;
+            font-family: monospace;
+        }
+
+        .copy-btn {
+            padding: 10px 20px;
+            border: 1px solid #333;
+            background: white;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="home-screen active" id="homeScreen">
+        <h1>Pick Game</h1>
+        <div class="game-select">
+            <button class="game-btn" data-game="42">6/42</button>
+            <button class="game-btn" data-game="55">6/55</button>
+        </div>
+    </div>
+
+    <div class="ticket-screen" id="ticketScreen">
+        <div class="ticket-block" id="ticketA">
+            <div class="letter-container">
+                <span class="letter" id="letterA">A</span>
+            </div>
+            <div class="numbers-grid" id="numbersA"></div>
+        </div>
+        <div class="ticket-block" id="ticketB" style="display: none;">
+            <div class="letter-container">
+                <span class="letter" id="letterB">B</span>
+            </div>
+            <div class="numbers-grid" id="numbersB"></div>
+        </div>
+        <div class="ticket-block" id="ticketC" style="display: none;">
+            <div class="letter-container">
+                <span class="letter" id="letterC">C</span>
+            </div>
+            <div class="numbers-grid" id="numbersC"></div>
+        </div>
+        <div class="ticket-block" id="ticketD" style="display: none;">
+            <div class="letter-container">
+                <span class="letter" id="letterD">D</span>
+            </div>
+            <div class="numbers-grid" id="numbersD"></div>
+        </div>
+        <div class="ticket-block" id="ticketE" style="display: none;">
+            <div class="letter-container">
+                <span class="letter" id="letterE">E</span>
+            </div>
+            <div class="numbers-grid" id="numbersE"></div>
+        </div>
+        <div class="ticket-block" id="ticketF" style="display: none;">
+            <div class="letter-container">
+                <span class="letter" id="letterF">F</span>
+            </div>
+            <div class="numbers-grid" id="numbersF"></div>
+        </div>
+        <div class="controls">
+            <button class="control-btn" id="undoBtn" disabled>Undo</button>
+            <button class="control-btn" id="nextBtn">Next</button>
+        </div>
+    </div>
+
+    <div class="confirm-screen" id="confirmScreen">
+        <div class="ticket-summary" id="ticketSummary"></div>
+        <div class="hash-section">
+            <div class="hash-display" id="hashDisplay"></div>
+            <button class="copy-btn" id="copyBtn">Copy Hash</button>
+        </div>
+        <button class="control-btn" id="newTicketBtn" style="max-width: 200px;">New Ticket</button>
+    </div>
+
+    <script>
+        // Hash encoding table (reversible)
+        const encodeTable = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        const decodeTable = {};
+        for (let i = 0; i < encodeTable.length; i++) {
+            decodeTable[encodeTable[i]] = i;
+        }
+
+        let currentGame = 42;
+        let currentBlock = 'A';
+        let selections = { A: null, B: null, C: null, D: null, E: null, F: null };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initGameButtons();
+            initTicketBlocks();
+            updateControls();
+        });
+
+        function initGameButtons() {
+            document.querySelectorAll('.game-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    currentGame = parseInt(btn.dataset.game);
+                    document.querySelector('.game-btn.active')?.classList.remove('active');
+                    btn.classList.add('active');
+                    showTicketScreen();
+                    generateNumbers('A');
+                });
+            });
+        }
+
+        function initTicketBlocks() {
+            ['A','B','C','D','E','F'].forEach(letter => {
+                document.getElementById(`numbers${letter}`).addEventListener('click', (e) => {
+                    if (e.target.classList.contains('number-btn')) {
+                        selectNumber(letter, parseInt(e.target.textContent));
+                    }
+                });
+            });
+
+            document.getElementById('undoBtn').addEventListener('click', undoSelection);
+            document.getElementById('nextBtn').addEventListener('click', nextBlock);
+            document.getElementById('newTicketBtn').addEventListener('click', resetTicket);
+            document.getElementById('copyBtn').addEventListener('click', copyHash);
+        }
+
+        function showTicketScreen() {
+            document.getElementById('homeScreen').classList.remove('active');
+            document.getElementById('ticketScreen').classList.add('active');
+        }
+
+        function generateNumbers(block) {
+            const container = document.getElementById(`numbers${block}`);
+            container.innerHTML = '';
+
+            for (let i = 1; i <= currentGame; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'number-btn';
+                btn.textContent = i;
+                if (selections[block] === i) btn.classList.add('picked');
+                container.appendChild(btn);
+            }
+        }
+
+        function selectNumber(block, number) {
+            selections[block] = number;
+            updateNumbersDisplay(block);
+            updateControls();
+        }
+
+        function updateNumbersDisplay(block) {
+            document.querySelectorAll(`#numbers${block} .number-btn`).forEach(btn => {
+                const num = parseInt(btn.textContent);
+                btn.classList.toggle('picked', selections[block] === num);
+            });
+        }
+
+        function updateControls() {
+            const currentLetterIndex = 'ABCDEF'.indexOf(currentBlock);
+            const allFilled = Object.values(selections).every(num => num !== null);
+
+            document.getElementById('undoBtn').disabled = selections[currentBlock] === null;
+            document.getElementById('nextBtn').textContent = allFilled ? 'Finish' : 'Next';
+            document.getElementById('nextBtn').className = allFilled ? 'control-btn active' : 'control-btn';
+        }
+
+        function undoSelection() {
+            if (selections[currentBlock] !== null) {
+                selections[currentBlock] = null;
+                updateNumbersDisplay(currentBlock);
+                updateControls();
+            }
+        }
+
+        function nextBlock() {
+            if (selections[currentBlock] !== null) {
+                const currentLetterIndex = 'ABCDEF'.indexOf(currentBlock);
+                if (currentLetterIndex < 5) {
+                    hideBlock(currentBlock);
+                    currentBlock = 'ABCDEF'[currentLetterIndex + 1];
+                    showBlock(currentBlock);
+                    generateNumbers(currentBlock);
+                    updateNumbersDisplay(currentBlock);
+                } else {
+                    showConfirmScreen();
+                }
+            }
+        }
+
+        function hideBlock(block) {
+            document.getElementById(`ticket${block}`).style.display = 'none';
+        }
+
+        function showBlock(block) {
+            document.getElementById(`ticket${block}`).style.display = 'block';
+        }
+
+        function showConfirmScreen() {
+            document.getElementById('ticketScreen').classList.remove('active');
+            document.getElementById('confirmScreen').classList.add('active');
+
+            displaySummary();
+            const hash = generateHash();
+            document.getElementById('hashDisplay').textContent = hash;
+        }
+
+        function displaySummary() {
+            const summary = document.getElementById('ticketSummary');
+            let html = '';
+            ['A','B','C','D','E','F'].forEach(letter => {
+                html += `<div class="summary-line"><span>${letter}</span><span>${selections[letter]}</span></div>`;
+                if (letter !== 'F') html += '<div style="height: 1px; background: #333; margin: 8px 0;"></div>';
+            });
+            summary.innerHTML = html;
+        }
+
+        function generateHash() {
+            let hash = '0.';
+
+            ['A','B','C','D','E','F'].forEach(letter => {
+                const value = selections[letter];
+                const encoded = encodeTable[value % encodeTable.length] + encodeTable[(value / encodeTable.length) | 0];
+                hash += letter.toLowerCase() + encoded;
+            });
+
+            const now = new Date();
+            const timestamp = now.toISOString().replace(/[-:T.Z]/g, '').slice(0, 14);
+            hash += timestamp;
+
+            const hour = now.getHours();
+            hash += hour >= 12 ? '.nz' : '.az';
+
+            return hash;
+        }
+
+        function decodeHash(hash) {
+            if (!hash.startsWith('0.') && !hash.startsWith('1.')) return null;
+
+            const result = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
+
+            const blockData = hash.split('.')[1];
+            for (let i = 0; i < 6; i++) {
+                const letter = blockData[i * 3];
+                const code1 = blockData[i * 3 + 1];
+                const code2 = blockData[i * 3 + 2];
+                const value = decodeTable[code1] + (decodeTable[code2] * encodeTable.length);
+                result[letter.toUpperCase()] = value;
+            }
+
+            return result;
+        }
+
+        function resetTicket() {
+            selections = { A: null, B: null, C: null, D: null, E: null, F: null };
+            currentBlock = 'A';
+            document.getElementById('confirmScreen').classList.remove('active');
+            document.getElementById('homeScreen').classList.add('active');
+        }
+
+        function copyHash() {
+            navigator.clipboard.writeText(document.getElementById('hashDisplay').textContent);
+            const btn = document.getElementById('copyBtn');
+            const original = btn.textContent;
+            btn.textContent = 'Copied!';
+            setTimeout(() => btn.textContent = original, 2000);
+        }
+
+        // Expose decode function globally for testing
+        window.decodeLotteryHash = decodeHash;
+    </script>
+</body>
+</html>
