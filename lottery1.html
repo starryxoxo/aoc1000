@@ -1,36 +1,89 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hash Decoder</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:inherit;background:#f5f5f5;padding:20px;min-height:100vh;display:flex;flex-direction:column;align-items:center;gap:30px}.decoder-container{max-width:500px;width:100%;background:white;border:1px solid #333;padding:30px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1)}.input-section{display:flex;flex-direction:column;gap:15px}.label{font-weight:700;margin-bottom:8px}.hash-input{padding:15px;border:1px solid #333;font-family:monospace;width:100%;font-size:14px}.decode-btn{padding:15px;border:1px solid #333;background:#007bff;color:white;cursor:pointer;font-size:16px;font-weight:700;transition:all .2s}.decode-btn:hover{background:#0056b3}.decode-btn:disabled{opacity:.5;cursor:not-allowed}.results{display:none;gap:20px;margin-top:30px}.result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px}.result-block{border:1px solid #333;padding:20px;text-align:center}.result-letter{font-size:2.5rem;font-weight:700;margin-bottom:10px}.result-number{font-size:1.5rem;color:#007bff}.error{color:#dc3545;font-weight:700;padding:15px;border:1px solid #dc3545;background:#f8d7da;border-radius:4px;display:none}.info{padding:15px;border:1px solid #28a745;background:#d4edda;color:#155724;border-radius:4px;font-size:14px}.ticket-reveal{max-width:400px;margin:20px auto;border:1px solid #333;padding:20px}.reveal-line{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee}.reveal-line:last-child{border-bottom:none}</style>
+    <meta charset="UTF-8">
+    <title>Lottery Hash Decoder</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: white;
+            text-align: center;
+            padding: 40px;
+        }
+        input {
+            padding: 10px;
+            width: 400px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        .result {
+            margin-top: 30px;
+            font-size: 18px;
+            background: #222;
+            padding: 20px;
+            display: inline-block;
+            border-radius: 10px;
+        }
+    </style>
 </head>
 <body>
-<div class="decoder-container">
-<h1 style="text-align:center;margin-bottom:20px">✅ Hash Decoder</h1>
-<div class="info">Paste hash from ticket generator (0.a1kb2z...20260222141112.nz)</div>
-<div class="input-section">
-<div class="label">Hash:</div>
-<input type="text" class="hash-input" id="hashInput" placeholder="0.a1kb2zc3xd4ye5zf6a20260222141112.nz">
-<button class="decode-btn" id="decodeBtn">Decode →</button>
-</div>
-<div class="error" id="errorMsg"></div>
-<div class="results" id="results">
-<div class="ticket-reveal" id="ticketReveal"></div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
-<div>
-<div class="label">Timestamp:</div>
-<div id="timestamp" style="font-size:18px;font-weight:700;color:#333;font-family:monospace;padding:10px;background:#f8f9fa;border-radius:4px"></div>
-</div>
-<div>
-<div class="label">Draw:</div>
-<div id="drawType" style="font-size:24px;font-weight:700;color:#28a745;padding:10px;background:#d4edda;border-radius:4px;text-align:center"></div>
-</div>
-</div>
-</div>
-</div>
 
-<script>const encodeTable="abcdefghijklmnopqrstuvwxyz0123456789";const decodeTable={};for(let i=0;i<encodeTable.length;i++){decodeTable[encodeTable[i]]=i}document.getElementById("decodeBtn").onclick=decodeHash;document.getElementById("hashInput").onkeypress=e=>e.key==="Enter"&&decodeHash();document.getElementById("hashInput").onpaste=()=>setTimeout(decodeHash,100);function decodeHash(){const e=document.getElementById("hashInput").value.trim(),t=document.getElementById("errorMsg"),n=document.getElementById("results"),r=document.getElementById("decodeBtn");t.style.display="none";n.style.display="none";r.disabled=true;r.innerHTML="🔄 Decoding...";if(!e){showError("Enter hash");return done()}if(!/^0.[a-z]w{2}[a-z]w{2}[a-z]w{2}[a-z]w{2}[a-z]w{2}[a-z]w{2}d{14}(.az|.nz)$/.test(e)){showError("Invalid format: 0.[a2chars]x6 + YYMMDDHHMMSS + .az/.nz");return done()}try{const[o,a,i]=e.split(".");let s=0;const l={};["A","B","C","D","E","F"].forEach((e,t)=>{const n=a.slice(t*3,t*3+3),r=n[0],o=n[1],c=n[2];l[e]={letter:r,num:decodeTable[o]+decodeTable[c]*encodeTable.length,sort:t}});const d=i.slice(0,14),u=new Date(d.slice(0,4)+"-"+d.slice(4,6)+"-"+d.slice(6,8)+"T"+d.slice(8,10)+":"+d.slice(10,12)+":"+d.slice(12,14)+"Z"),m=e.endsWith(".nz")?"🌙 Night":"☀️ Day";displayResults(l,u,m);done()}catch(e){showError("Decode failed: "+e);done()}}function displayResults(e,t,n){const r=document.getElementById("ticketReveal");r.innerHTML="";Object.values(e).sort((e,t)=>e.sort-t).forEach(({letter:e,num:t})=>{const n=document.createElement("div");n.className="reveal-line";n.innerHTML=`<span>${e}</span><span>${t}</span>`;r.appendChild(n);e!=="F"&&(o=document.createElement("div"),o.style.height="2px",o.style.background="#333",o.style.margin="6px 0",r.appendChild(o))});document.getElementById("timestamp").textContent=t.toLocaleString();document.getElementById("drawType").textContent=n;document.getElementById("results").style.display="block"}function showError(e){document.getElementById("errorMsg").innerHTML=e;document.getElementById("errorMsg").style.display="block"}function done(){const e=document.getElementById("decodeBtn");e.disabled=false;e.innerHTML="Decode →"}</script>
+    <h2>Lottery Hash Decoder</h2>
+
+    <input type="text" id="hashInput" placeholder="Paste hash here">
+    <button onclick="decodeHash()">Decode</button>
+
+    <div class="result" id="output"></div>
+
+    <script>
+        const encodeTable = 'abcdefghijklmnopqrstuvwxyz0123456789';
+        const decodeTable = {};
+
+        for (let i = 0; i < encodeTable.length; i++) {
+            decodeTable[encodeTable[i]] = i;
+        }
+
+        function decodeHash() {
+            const hash = document.getElementById('hashInput').value.trim();
+            const output = document.getElementById('output');
+
+            if (!hash.startsWith('0.') && !hash.startsWith('1.')) {
+                output.innerHTML = "Invalid hash format.";
+                return;
+            }
+
+            const blockData = hash.split('.')[1];
+
+            const result = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
+
+            for (let i = 0; i < 6; i++) {
+                const letter = blockData[i * 3];
+                const code1 = blockData[i * 3 + 1];
+                const code2 = blockData[i * 3 + 2];
+
+                const value = decodeTable[code1] + 
+                              (decodeTable[code2] * encodeTable.length);
+
+                result[letter.toUpperCase()] = value;
+            }
+
+            output.innerHTML = `
+                <strong>Decoded Numbers:</strong><br><br>
+                A: ${result.A}<br>
+                B: ${result.B}<br>
+                C: ${result.C}<br>
+                D: ${result.D}<br>
+                E: ${result.E}<br>
+                F: ${result.F}
+            `;
+        }
+    </script>
+
 </body>
 </html>
