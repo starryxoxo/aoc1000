@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hash Decoder</title>
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:inherit;background:#f5f5f5;padding:20px;min-height:100vh;display:flex;flex-direction:column;align-items:center;gap:30px}.decoder-container{max-width:500px;width:100%;background:white;border:1px solid #333;padding:30px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1)}.input-section{display:flex;flex-direction:column;gap:15px}.label{font-weight:700;margin-bottom:8px}.hash-input{padding:15px;border:1px solid #333;font-family:monospace;width:100%;font-size:14px}.decode-btn{padding:15px;border:1px solid #333;background:#007bff;color:white;cursor:pointer;font-size:16px;font-weight:700;transition:all .2s}.decode-btn:hover{background:#0056b3}.decode-btn:disabled{opacity:.5;cursor:not-allowed}.results{display:none;gap:20px;margin-top:30px}.result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px}.result-block{border:1px solid #333;padding:20px;text-align:center}.result-letter{font-size:2.5rem;font-weight:700;margin-bottom:10px}.result-number{font-size:1.5rem;color:#007bff}.error{color:#dc3545;font-weight:700;padding:15px;border:1px solid #dc3545;background:#f8d7da;border-radius:4px;display:none}.info{padding:15px;border:1px solid #28a745;background:#d4edda;color:#155724;border-radius:4px;font-size:14px}</style>
+</head>
+<body>
+<div class="decoder-container">
+<h1 style="text-align:center;margin-bottom:20px">Lottery Hash Decoder</h1>
+<div class="info">Paste your hash (starts with 0. or 1.) to decode A-F numbers + timestamp</div>
+<div class="input-section">
+<div class="label">Hash Input:</div>
+<input type="text" class="hash-input" id="hashInput" placeholder="0.a1kb2z...20260222130812.nz">
+<button class="decode-btn" id="decodeBtn">Decode Hash</button>
+</div>
+<div class="error" id="errorMsg"></div>
+<div class="results" id="results">
+<div class="result-grid" id="resultGrid"></div>
+<div style="text-align:center">
+<div class="label">Timestamp:</div>
+<div id="timestamp" style="font-size:18px;font-weight:700;color:#333;font-family:monospace"></div>
+<div class="label" style="margin-top:15px">Draw:</div>
+<div id="drawType" style="font-size:18px;font-weight:700;color:#28a745"></div>
+</div>
+</div>
+</div>
+
+<script>const encodeTable="abcdefghijklmnopqrstuvwxyz0123456789";const decodeTable={};for(let e=0;e<encodeTable.length;e++)decodeTable[encodeTable[e]]=e;document.addEventListener("DOMContentLoaded",()=>{document.getElementById("decodeBtn").addEventListener("click",decodeHash);document.getElementById("hashInput").addEventListener("keypress",e=>"Enter"===e.key&&decodeHash());document.getElementById("hashInput").addEventListener("paste",()=>setTimeout(()=>decodeHash(),100))});function decodeHash(){const e=document.getElementById("hashInput").value.trim(),t=document.getElementById("errorMsg"),n=document.getElementById("results"),r=document.getElementById("resultGrid"),o=document.getElementById("timestamp"),a=document.getElementById("drawType"),i=document.getElementById("decodeBtn");t.style.display="none";n.style.display="none";i.disabled=!0;i.textContent="Decoding...";if(!e)return showError("Enter a hash"),i.disabled=!1,void(i.textContent="Decode Hash");if(!e.startsWith("0.")&&!e.startsWith("1."))return showError("Hash must start with 0. or 1."),i.disabled=!1,void(i.textContent="Decode Hash");try{const s=e.split("."),l=s[1];if(l.length<30)return showError("Invalid hash format"),i.disabled=!1,void(i.textContent="Decode Hash");const d={A:0,B:0,C:0,D:0,E:0,F:0};for(let e=0;e<6;e++){const t=l.slice(e*3,e*3+3),n=t[0],r=t[1],o=t[2];if(!decodeTable[r]||!decodeTable[o])return showError("Invalid hash encoding"),i.disabled=!1,void(i.textContent="Decode Hash");d[n.toUpperCase()]=decodeTable[r]+decodeTable[o]*encodeTable.length}const c=s.slice(2).join(".").slice(0,14);if(!/^d{14}/.test(c))return showError("Invalid timestamp"),i.disabled=!1,void(i.textContent="Decode Hash");const u=new Date(c.slice(0,4)+"-"+c.slice(4,6)+"-"+c.slice(6,8)+"T"+c.slice(8,10)+":"+c.slice(10,12)+":"+c.slice(12,14));displayResults(d,u,e.endsWith(".nz")?"Night":"Day");i.disabled=!1;i.textContent="Decode Hash"}catch(e){showError("Decode error: "+e.message);i.disabled=!1;i.textContent="Decode Hash"}}function displayResults(e,t,n){const r=document.getElementById("resultGrid");r.innerHTML="";["A","B","C","D","E","F"].forEach(o=>{const a=document.createElement("div");a.className="result-block";a.innerHTML=`<div class="result-letter">${o}</div><div class="result-number">${e[o]}</div>`;r.appendChild(a)});document.getElementById("timestamp").textContent=t.toLocaleString();document.getElementById("drawType").textContent=n;document.getElementById("results").style.display="flex"}function showError(e){const t=document.getElementById("errorMsg");t.textContent=e;t.style.display="block";document.getElementById("results").style.display="none"}</script>
+</body>
+</html>
