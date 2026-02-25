@@ -592,6 +592,11 @@ eleventyConfig.addPassthroughCopy("lottery.html");
 
 eleventyConfig.addPassthroughCopy("lottery1.html");
   eleventyConfig.addPassthroughCopy("src/site/scripts");
+ 
+eleventyConfig.addPassthroughCopy("lottery2.html");
+
+eleventyConfig.addPassthroughCopy("lotteryterminal.html");
+ 
   eleventyConfig.addPassthroughCopy("src/site/styles/_theme.*.css");
   eleventyConfig.addPassthroughCopy({ "src/site/logo.*": "/" });
   eleventyConfig.addPlugin(faviconsPlugin, { outputDir: "dist" });
