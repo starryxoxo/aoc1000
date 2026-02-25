@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lottery Terminal</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+
+body{
+    font-family: "Courier New", Courier, monospace;
+    background:#000;
+    color:#00FF00;
+    padding:20px;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:30px;
+}
+
+/* Terminal boxes */
+.box{
+    border:1px solid #00FF00;
+    border-radius:6px;
+    padding:15px;
+    width:100%;
+    max-width:400px;
+}
+
+/* Buttons */
+.terminal-btn{
+    padding:12px;
+    font-family: monospace;
+    font-size:16px;
+    border:1px solid #00FF00;
+    border-radius:4px;
+    background:#000;
+    color:#00FF00;
+    cursor:pointer;
+    transition:all .15s ease;
+}
+
+.terminal-btn:hover{
+    background:#002200;
+}
+
+.terminal-btn:active{
+    transform:scale(.97);
+}
+
+.terminal-btn:disabled{
+    opacity:.3;
+    cursor:not-allowed;
+}
+
+/* Layout */
+.home-screen{display:flex;flex-direction:column;gap:20px;align-items:center;width:100%;}
+.game-select{display:flex;gap:12px;width:100%;flex-wrap:wrap;justify-content:center;}
+
+.ticket-screen{display:none;width:100%;max-width:400px;}
+.ticket-screen.active{display:block;}
+
+.progress-container{
+    width:100%;
+    height:6px;
+    background:#003300;
+    border-radius:3px;
+    overflow:hidden;
+    margin-bottom:15px;
+}
+.progress-bar{
+    height:100%;
+    width:0%;
+    background:#00FF00;
+    transition:width .3s ease;
+}
+
+.ticket-block{margin-bottom:20px;}
+.letter-container{border-bottom:1px solid #00FF00;padding-bottom:8px;margin-bottom:8px;}
+.letter{font-size:2.5rem;font-weight:bold;}
+
+.numbers-grid{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    gap:6px;
+}
+
+.number-btn{
+    aspect-ratio:1;
+    font-family: monospace;
+    font-size:14px;
+    border:1px solid #00FF00;
+    border-radius:4px;
+    background:#000;
+    color:#00FF00;
+    cursor:pointer;
+    transition:.15s ease;
+}
+
+.number-btn:hover{background:#003300;}
+
+.number-btn.picked{
+    background:#00FF00;
+    color:#000;
+    font-weight:bold;
+    animation:blink .4s ease;
+}
+
+@keyframes blink{
+    0%,100%{opacity:1;}
+    50%{opacity:0.3;}
+}
+
+.controls{
+    display:flex;
+    gap:12px;
+    margin-top:12px;
+}
+
+.confirm-screen{display:none;flex-direction:column;align-items:center;gap:20px;width:100%;max-width:400px;}
+.confirm-screen.active{display:flex;}
+
+.ticket-summary{
+    border:1px solid #00FF00;
+    padding:15px;
+    border-radius:6px;
+    width:100%;
+}
+
+.summary-line{
+    display:flex;
+    justify-content:space-between;
+    padding:6px 0;
+    border-bottom:1px solid #003300;
+}
+.summary-line:last-child{border-bottom:none;}
+
+.hash-display{
+    background:#000;
+    border:1px solid #00FF00;
+    border-radius:4px;
+    padding:12px;
+    font-family: monospace;
+    min-height:40px;
+    word-break:break-all;
+}
+</style>
+</head>
+
+<body>
+
+<div class="home-screen active" id="homeScreen">
+    <h1>Lottery Terminal</h1>
+    <div class="game-select">
+        <button class="terminal-btn" data-game="42">6/42</button>
+    </div>
+</div>
+
+<div class="ticket-screen" id="ticketScreen">
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="ticket-block box" id="ticketA">
+        <div class="letter-container"><span class="letter">A</span></div>
+        <div class="numbers-grid" id="numbersA"></div>
+    </div>
+
+    <div class="ticket-block box" id="ticketB" style="display:none;">
+        <div class="letter-container"><span class="letter">B</span></div>
+        <div class="numbers-grid" id="numbersB"></div>
+    </div>
+
+    <div class="ticket-block box" id="ticketC" style="display:none;">
+        <div class="letter-container"><span class="letter">C</span></div>
+        <div class="numbers-grid" id="numbersC"></div>
+    </div>
+
+    <div class="ticket-block box" id="ticketD" style="display:none;">
+        <div class="letter-container"><span class="letter">D</span></div>
+        <div class="numbers-grid" id="numbersD"></div>
+    </div>
+
+    <div class="ticket-block box" id="ticketE" style="display:none;">
+        <div class="letter-container"><span class="letter">E</span></div>
+        <div class="numbers-grid" id="numbersE"></div>
+    </div>
+
+    <div class="ticket-block box" id="ticketF" style="display:none;">
+        <div class="letter-container"><span class="letter">F</span></div>
+        <div class="numbers-grid" id="numbersF"></div>
+    </div>
+
+    <div class="controls">
+        <button class="terminal-btn" id="undoBtn" disabled>Undo</button>
+        <button class="terminal-btn" id="luckyBtn">Lucky</button>
+        <button class="terminal-btn" id="nextBtn">Next</button>
+    </div>
+</div>
+
+<div class="confirm-screen" id="confirmScreen">
+    <div class="ticket-summary" id="ticketSummary"></div>
+
+    <div style="width:100%;">
+        <div class="hash-display" id="hashDisplay"></div>
+        <button class="terminal-btn" id="copyBtn" style="margin-top:10px;">Copy Hash</button>
+    </div>
+
+    <button class="terminal-btn" onclick="location.reload()">New Ticket</button>
+</div>
+
+<script>
+// HASH LOGIC UNCHANGED
+const encodeTable='abcdefghijklmnopqrstuvwxyz0123456789';
+const decodeTable={};
+for(let i=0;i<encodeTable.length;i++){decodeTable[encodeTable[i]]=i;}
+
+let currentGame=42;
+let currentBlock='A';
+let selections={A:null,B:null,C:null,D:null,E:null,F:null};
+
+// Initialize 6/42 button
+document.querySelector('[data-game="42"]').addEventListener('click',()=>{
+document.getElementById('homeScreen').classList.remove('active');
+document.getElementById('ticketScreen').classList.add('active');
+generateNumbers('A');
+});
+
+// Number selection
+['A','B','C','D','E','F'].forEach(letter=>{
+document.getElementById(`numbers${letter}`).addEventListener('click',(e)=>{
+if(e.target.classList.contains('number-btn')){
+selectNumber(letter,parseInt(e.target.textContent));
+}
+});
+});
+
+// Buttons
+document.getElementById('undoBtn').addEventListener('click',undoSelection);
+document.getElementById('nextBtn').addEventListener('click',nextBlock);
+document.getElementById('luckyBtn').addEventListener('click',pickLuckyNumber);
+document.getElementById('copyBtn').addEventListener('click',copyHash);
+
+function generateNumbers(block){
+const container=document.getElementById(`numbers${block}`);
+container.innerHTML='';
+for(let i=1;i<=currentGame;i++){
+const btn=document.createElement('button');
+btn.className='number-btn';
+btn.textContent=i;
+container.appendChild(btn);
+}
+}
+
+function selectNumber(block,number){
+selections[block]=number;
+updateNumbersDisplay(block);
+updateProgress();
+updateControls();
+}
+
+function updateNumbersDisplay(block){
+document.querySelectorAll(`#numbers${block} .number-btn`).forEach(btn=>{
+btn.classList.toggle('picked',parseInt(btn.textContent)===selections[block]);
+});
+}
+
+function updateProgress(){
+const filled=Object.values(selections).filter(n=>n!==null).length;
+document.getElementById('progressBar').style.width=(filled/6)*100+'%';
+}
+
+function updateControls(){
+document.getElementById('undoBtn').disabled=selections[currentBlock]===null;
+}
+
+function undoSelection(){
+selections[currentBlock]=null;
+updateNumbersDisplay(currentBlock);
+updateProgress();
+updateControls();
+}
+
+function nextBlock(){
+if(selections[currentBlock]!==null){
+const idx='ABCDEF'.indexOf(currentBlock);
+if(idx<5){
+document.getElementById(`ticket${currentBlock}`).style.display='none';
+currentBlock='ABCDEF'[idx+1];
+document.getElementById(`ticket${currentBlock}`).style.display='block';
+generateNumbers(currentBlock);
+}else{
+showConfirmScreen();
+}
+}
+}
+
+function pickLuckyNumber(){
+const rand=Math.floor(Math.random()*currentGame)+1;
+selectNumber(currentBlock,rand);
+}
+
+function showConfirmScreen(){
+document.getElementById('ticketScreen').classList.remove('active');
+document.getElementById('confirmScreen').classList.add('active');
+displaySummary();
+animateHash(generateHash());
+}
+
+function displaySummary(){
+const summary=document.getElementById('ticketSummary');
+let html='';
+for(let letter in selections){
+html+=`<div class="summary-line"><span>${letter}</span><span>${selections[letter]}</span></div>`;
+}
+summary.innerHTML=html;
+}
+
+function generateHash(){
+let hash='0.';
+['A','B','C','D','E','F'].forEach(letter=>{
+const value=selections[letter];
+const encoded=encodeTable[value%encodeTable.length]+encodeTable[(value/encodeTable.length)|0];
+hash+=letter.toLowerCase()+encoded;
+});
+const now=new Date();
+const timestamp=[
+now.getFullYear(),
+String(now.getMonth()+1).padStart(2,'0'),
+String(now.getDate()).padStart(2,'0'),
+String(now.getHours()).padStart(2,'0'),
+String(now.getMinutes()).padStart(2,'0'),
+String(now.getSeconds()).padStart(2,'0')
+].join('');
+hash+=timestamp;
+hash+=now.getHours()>=12?'.nz':'.az';
+return hash;
+}
+
+function animateHash(fullHash){
+const display=document.getElementById('hashDisplay');
+display.textContent='';
+let i=0;
+const interval=setInterval(()=>{
+display.textContent+=fullHash[i];
+i++;
+if(i>=fullHash.length) clearInterval(interval);
+},25);
+}
+
+function copyHash(){
+navigator.clipboard.writeText(document.getElementById('hashDisplay').textContent);
+const btn=document.getElementById('copyBtn');
+btn.textContent='Copied!';
+setTimeout(()=>btn.textContent='Copy Hash',2000);
+}
+</script>
+
+</body>
+</html>
