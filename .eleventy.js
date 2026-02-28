@@ -595,7 +595,7 @@ eleventyConfig.addPassthroughCopy("lottery1.html");
  
 eleventyConfig.addPassthroughCopy("lottery2.html");
 
-eleventyConfig.addPassthroughCopy("lotteryterminal.html");
+eleventyConfig.addPassthroughCopy({ "lotteryterminal.html": "6-42/" });
  
   eleventyConfig.addPassthroughCopy("src/site/styles/_theme.*.css");
   eleventyConfig.addPassthroughCopy({ "src/site/logo.*": "/" });
