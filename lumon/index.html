@@ -623,12 +623,12 @@ body::after{
   }
 
   bootBtn.addEventListener("click", () => {
-    bootBtn.disabled = true;
-    bootBtn.textContent = "BOOTING...";
-    bootSequence();
-  });
-
-  gridEl.addEventListener("click", handleGridTap);
+  if (bootBtn.disabled) return;  // Add this safety
+  bootBtn.disabled = true;
+  bootBtn.textContent = "BOOTING...";
+  bootSequence();
+});
+  gridEl.addEventListener("pointerdown", handleGridTap, { passive: false });
 
   document.querySelectorAll(".bin").forEach(btn => {
     btn.addEventListener("click", () => refineTo(btn.dataset.bin));
