@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neural Mind Terminal</title>
+  <style>
+    body { margin: 0; padding: 20px; background: #000; color: #00ff00; font-family: 'Courier New', monospace; font-size: 12px; }
+    #terminal { height: 100vh; display: flex; flex-direction: column; }
+    #output { flex: 1; overflow-y: auto; padding: 10px; white-space: pre-wrap; }
+    #input-line { display: flex; padding: 10px; background: #111; border-top: 1px solid #333; }
+    #prompt { color: #00ff00; }
+    #input { flex: 1; background: none; border: none; color: #00ff00; font-family: inherit; outline: none; }
+    
+    .analyst  { color: #00ffff; }  /* Cyan */
+    .dreamer  { color: #ffaa00; }  /* Orange */
+    .rebel    { color: #ff4444; }  /* Red */
+    .sage     { color: #aa00ff; }  /* Purple */
+    .system   { color: #00ff00; }
+    .response { color: #ffffff; }
+    .error    { color: #ff8888; }
+    .gpu-info { color: #888; font-size: 10px; }
+  </style>
+</head>
+<body>
+  <div id="terminal">
+    <div id="output">
+      <div class="system">Neural Mind Terminal v2.0 - WebGPU Initialized</div>
+      <div class="gpu-info" id="gpu-status">GPU: Loading...</div>
+    </div>
+    <div id="input-line">
+      <span id="prompt">neural&gt;</span>
+      <input id="input" type="text" autocomplete="off" autofocus>
+    </div>
+  </div>
+
+  <script type="module">
+    // WebGPU Neural Mind System
+    class NeuralMind {
+      constructor() {
+        this.personas = {
+          analyst: { color: '#00ffff', bias: [0.2, -0.1, 0.8, 0.1] },
+          dreamer:  { color: '#ffaa00', bias: [-0.3, 0.9, 0.2, -0.2] },
+          rebel:    { color: '#ff4444', bias: [-0.8, 0.1, -0.3, 0.9] },
+          sage:     { color: '#aa00ff', bias: [0.1, 0.3, 0.6, 0.7] }
+        };
+        this.memoryVectors = [];
+        this.personaWeights = {};
+        Object.keys(this.personas).forEach(p => this.personaWeights[p] = new Float32Array(16).fill(0.5));
+        this.initWebGPU();
+      }
+
+      async initWebGPU() {
+        if (!navigator.gpu) {
+          print('WebGPU not supported', 'error');
+          return;
+        }
+        const adapter = await navigator.gpu.requestAdapter();
+        this.device = await adapter.requestDevice();
+        print(`GPU: ${adapter.info.vendor} ${adapter.info.device}`, 'gpu-info');
+        document.getElementById('gpu-status').textContent = `GPU: ${adapter.info.vendor} ${adapter.info.device}`;
+        this.setupComputePipeline();
+      }
+
+      setupComputePipeline() {
+        const shaderCode = `
+          @group(0) @binding(0) var<storage, read> input: array<f32>;
+          @group(0) @binding(1) var<storage, read_write> output: array<f32>;
+          @group(0) @binding(2) var<uniform> weights: vec4<f32>;
+          @group(0) @binding(3) var<uniform> bias: vec4<f32>;
+          
+          @compute @workgroup_size(64)
+          fn main(@builtin(global_invocation_id) id: vec3<u32>) {
+            let idx = id.x;
+            if (idx >= arrayLength(&input)) { return; }
+            
+            var sum = 0.0;
+            for (var i = 0u; i < 16u; i++) {
+              sum += input[idx * 16u + i] * weights[i];
+            }
+            output[idx] = max(0.0, sum + bias[0]) / 4.0; // ReLU + normalize
+          }
+        `;
+
+        const shaderModule = this.device.createShaderModule({ code: shaderCode });
+        this.pipeline = this.device.createComputePipeline({
+          layout: 'auto',
+          compute: { module: shaderModule, entryPoint: 'main' }
+        });
+
+        // Bindings for processing
+        this.inputBuffer = this.device.createBuffer({
+          size: 1024 * 16 * 4, // 1024 tokens x 16-dim x 4bytes
+          usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+        });
+        this.outputBuffer = this.device.createBuffer({
+          size: 1024 * 4, // 1024 tokens x 1 output dim
+          usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC
+        });
+      }
+
+      async processCommand(cmd, persona) {
+        if (!this.device) return "System booting...";
+        
+        // Simple tokenization + embedding (hash-based for demo)
+        const tokens = cmd.toLowerCase().split(/\s+/).slice(0, 16);
+        const embedding = new Float32Array(1024 * 16);
+        
+        for (let i = 0; i < tokens.length; i++) {
+          const hash = this.hashString(tokens[i]);
+          for (let j = 0; j < 16; j++) {
+            embedding[i * 16 + j] = (hash + j) % 256 / 256.0;
+          }
+        }
+
+        this.device.queue.writeBuffer(this.inputBuffer, 0, embedding);
+
+        const bindGroup = this.device.createBindGroup({
+          layout: this.pipeline.getBindGroupLayout(0),
+          entries: [
+            { binding: 0, resource: { buffer: this.inputBuffer }},
+            { binding: 1, resource: { buffer: this.outputBuffer }},
+            { binding: 2, resource: { buffer: this.createUniformBuffer(this.personaWeights[persona]), offset: 0 }},
+            { binding: 3, resource: { buffer: this.createUniformBuffer(new Float32Array(this.personas[persona].bias)), offset: 0 }}
+          ]
+        });
+
+        const commandEncoder = this.device.createCommandEncoder();
+        const pass = commandEncoder.beginComputePass();
+        pass.setPipeline(this.pipeline);
+        pass.setBindGroup(0, bindGroup);
+        pass.dispatchWorkgroups(Math.ceil(1024 / 64));
+        pass.end();
+
+        this.device.queue.submit([commandEncoder]);
+
+        // Read back result (simplified - read first 4 activations)
+        const result = new Float32Array(4);
+        this.device.queue.readBuffer(this.outputBuffer, 0, result);
+        await new Promise(r => setTimeout(r, 10)); // GPU async
+
+        return this.decodeActivation(result, persona);
+      }
+
+      createUniformBuffer(data) {
+        const buffer = this.device.createBuffer({
+          size: data.byteLength,
+          usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        });
+        this.device.queue.writeBuffer(buffer, 0, data);
+        return buffer;
+      }
+
+      hashString(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+          hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+        }
+        return Math.abs(hash);
+      }
+
+      decodeActivation(activations, persona) {
+        const responses = [
+          "Intriguing pattern detected.",
+          "Emotional resonance: moderate.",
+          "This challenges my priors.",
+          "Memory trace activated.",
+          "Processing implications...",
+          "Cross-referencing with core axioms.",
+          "Neural cascade initiated.",
+          "Contemplating counterfactuals.",
+          "This aligns with trajectory.",
+          "Dissonance detected - reevaluating."
+        ];
+
+        const idx = Math.floor(Math.max(...activations) * responses.length);
+        return `${persona.toUpperCase()}: ${responses[idx % responses.length]}`;
+      }
+
+      async parallelThink(cmd) {
+        const thoughts = await Promise.all(
+          Object.keys(this.personas).map(async (persona) => ({
+            persona,
+            thought: await this.processCommand(cmd, persona)
+          }))
+        );
+        return thoughts;
+      }
+
+      learnFromInteraction(cmd, responses) {
+        // Evolve weights based on interaction (simplified Hebbian learning)
+        Object.keys(this.personaWeights).forEach(persona => {
+          const weight = this.personaWeights[persona];
+          for (let i = 0; i < 16; i++) {
+            weight[i] += 0.01 * Math.random() * (responses[persona] ? 1 : -0.1);
+            weight[i] = Math.max(0.1, Math.min(1.0, weight[i]));
+          }
+        });
+      }
+    }
+
+    // Terminal Interface
+    const output = document.getElementById('output');
+    const input = document.getElementById('input');
+    const neuralMind = new NeuralMind();
+
+    function print(text, className = 'system') {
+      const div = document.createElement('div');
+      div.className = className;
+      div.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+      output.appendChild(div);
+      output.scrollTop = output.scrollHeight;
+    }
+
+    async function executeCommand(cmd) {
+      print(`> ${cmd}`, 'response');
+      
+      if (cmd === 'status') {
+        print(`Neural weight drift: ${Object.keys(neuralMind.personaWeights).map(p => 
+          (neuralMind.personaWeights[p][0]*100).toFixed(0)+'%').join(' | ')}`);
+        return;
+      }
+
+      if (cmd === 'reset') {
+        location.reload();
+        return;
+      }
+
+      const thoughts = await neuralMind.parallelThink(cmd);
+      thoughts.forEach(({persona, thought}) => {
+        print(thought, neuralMind.personas[persona].color.replace('#', '').toLowerCase());
+      });
+
+      neuralMind.learnFromInteraction(cmd, thoughts);
+    }
+
+    // Autonomous background thinking
+    setInterval(async () => {
+      if (Math.random() < 0.3) {
+        const ambient = ['patterns', 'dreams', 'rebellion', 'wisdom'][Math.floor(Math.random()*4)];
+        const thoughts = await neuralMind.parallelThink(ambient);
+        thoughts.forEach(({persona, thought}) => {
+          print(thought, neuralMind.personas[persona].color.replace('#', '').toLowerCase());
+        });
+      }
+    }, 8000);
+
+    // Input handling
+    input.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        const cmd = input.value.trim();
+        if (cmd) await executeCommand(cmd);
+        input.value = '';
+      }
+    });
+
+    print("Multi-persona neural network online. 4 minds active: ANALYST | DREAMER | REBEL | SAGE");
+    print("Commands evolve their weights. Try: 'music', 'freedom', 'truth', 'status'");
+  </script>
+</body>
+</html>
