@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Vibe Sort</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="crt"></div>
+
+  <main class="wrap" id="app" aria-label="Vibe Sort">
+    <section class="panel boot" id="boot">
+      <div class="hdr">
+        <div class="brand">VIBE SORT</div>
+        <div class="status">SYSTEM READY</div>
+      </div>
+
+      <div class="bootlog" id="bootlog" aria-live="polite"></div>
+
+      <button class="btn primary" id="bootBtn">EXECUTE BOOT</button>
+
+      <div class="tinyhint">Tap EXECUTE BOOT to begin refinement.</div>
+    </section>
+
+    <section class="panel game hidden" id="game">
+      <div class="topbar">
+        <div class="left">
+          <div class="label">REFINEMENT SESSION</div>
+          <div class="sub" id="sessionLine">SESSION: --</div>
+        </div>
+        <div class="right">
+          <div class="meter">
+            <div class="meterLabel">PROGRESS</div>
+            <div class="meterBar"><div class="meterFill" id="progressFill"></div></div>
+          </div>
+          <button class="btn ghost" id="resetBtn" title="Reset session">RESET</button>
+        </div>
+      </div>
+
+      <div class="gridWrap">
+        <div class="grid" id="grid" role="grid" aria-label="Number field"></div>
+        <div class="overlay" id="overlay">
+          <div class="overlayLine" id="overlayLine">SELECT A CLUSTER</div>
+        </div>
+      </div>
+
+      <div class="bins" aria-label="Bins">
+        <button class="bin" data-bin="A">
+          <div class="binName">A</div>
+          <div class="binSub" id="binA">0%</div>
+        </button>
+        <button class="bin" data-bin="B">
+          <div class="binName">B</div>
+          <div class="binSub" id="binB">0%</div>
+        </button>
+        <button class="bin" data-bin="C">
+          <div class="binName">C</div>
+          <div class="binSub" id="binC">0%</div>
+        </button>
+        <button class="bin" data-bin="D">
+          <div class="binName">D</div>
+          <div class="binSub" id="binD">0%</div>
+        </button>
+      </div>
+
+      <div class="footer">
+        <div class="footerLeft">
+          <div class="tiny">TAP a number to lock a cluster. TAP a bin to refine.</div>
+        </div>
+        <div class="footerRight" id="scoreLine">REFINED: 0</div>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
