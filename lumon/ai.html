@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Worldbox Neural Mind</title>
+  <style>
+    body { 
+      margin: 0; padding: 20px; 
+      background: linear-gradient(180deg, #000011 0%, #001100 100%); 
+      color: #00ff88; 
+      font-family: 'Courier New', monospace; 
+      font-size: 13px; 
+    }
+    #terminal { height: 100vh; display: flex; flex-direction: column; }
+    #output { 
+      flex: 1; overflow-y: auto; padding: 15px; 
+      background: rgba(0,20,0,0.3); 
+      backdrop-filter: blur(5px);
+    }
+    #input-line { 
+      display: flex; padding: 15px; 
+      background: rgba(0,30,0,0.8); 
+      border-top: 2px solid #004400; 
+    }
+    #prompt { color: #00ff88; font-weight: bold; }
+    #input { 
+      flex: 1; background: none; border: none; 
+      color: #88ff88; font-family: inherit; outline: none; 
+    }
+    #stats { 
+      position: fixed; top: 10px; right: 10px; 
+      background: rgba(0,0,0,0.7); padding: 10px; 
+      font-size: 11px; border: 1px solid #004400;
+    }
+    
+    .thought    { color: #88ff88; }
+    .impulse    { color: #ffaa44; }
+    .trait      { color: #44aaff; }
+    .event      { color: #ff4444; font-weight: bold; }
+    .system     { color: #00ff88; }
+    .decay      { color: #666666; }
+    .response   { color: #ffffff; }
+  </style>
+</head>
+<body>
+  <div id="stats">
+    Energy: <span id="energy">100</span> | 
+    Diversity: <span id="diversity">0</span> | 
+    Stability: <span id="stability">100</span>
+  </div>
+  
+  <div id="terminal">
+    <div id="output">
+      <div class="system">🌌 WORLD-BOX NEURAL MIND v3.0</div>
+      <div class="system">Neural ecosystem simulation active. Population: 16 thoughtforms.</div>
+    </div>
+    <div id="input-line">
+      <span id="prompt">mind&gt;</span>
+      <input id="input" type="text" autocomplete="off" autofocus>
+    </div>
+  </div>
+
+  <script type="module">
+    class WorldboxMind {
+      constructor() {
+        this.population = []; // Thoughtforms
+        this.energy = 100;
+        this.gen = 0;
+        this.initPopulation();
+        this.running = true;
+        this.simulate();
+        this.initWebGPU();
+      }
+
+      initPopulation() {
+        const archetypes = [
+          {type: 'curiosity', energy: 12, traits: [0.8, 0.2, 0.1]},
+          {type: 'memory', energy: 8, traits: [0.1, 0.9, 0.3]},
+          {type: 'emotion', energy: 15, traits: [0.4, 0.1, 0.7]},
+          {type: 'logic', energy: 10, traits: [0.9, 0.3, 0.2]}
+        ];
+        
+        for (let i = 0; i < 16; i++) {
+          const arch = archetypes[i % 4];
+          this.population.push({
+            id: i,
+            type: arch.type,
+            energy: arch.energy + (Math.random()-0.5)*4,
+            traits: [...arch.traits.map(t => t + (Math.random()-0.5)*0.2)],
+            age: 0,
+            expression: ''
+          });
+        }
+      }
+
+      async initWebGPU() {
+        try {
+          const adapter = await navigator.gpu.requestAdapter();
+          if (!adapter) throw new Error('No GPU');
+          
+          this.device = await adapter.requestDevice();
+          print(`🖥️  GPU: ${adapter.info.vendor} | Population sim ready`);
+          
+          this.setupNeuralSim();
+        } catch(e) {
+          print('⚠️  WebGPU unavailable - CPU fallback active', 'system');
+          this.cpuFallback = true;
+        }
+      }
+
+      setupNeuralSim() {
+        // Simplified neural competition shader
+        const wgsl = `
+          @group(0) @binding(0) var<storage, read> population: array<f32>;
+          @group(0) @binding(1) var<storage, read_write> newPop: array<f32>;
+          
+          @compute @workgroup_size(64)
+          fn compete(@builtin(global_invocation_id) id: vec3<u32>) {
+            let i = id.x * 3u; // 3 floats per thoughtform
+            if (i >= arrayLength(&population)) { return; }
+            
+            let energy = population[i];
+            let trait1 = population[i+1u];
+            let trait2 = population[i+2u];
+            
+            // Competition + environmental pressure
+            let fitness = energy * (trait1 + trait2);
+            let survival = min(1.0, fitness / 20.0);
+            
+            newPop[i] = energy * survival;
+            newPop[i+1u] = trait1 + (survival - 0.5) * 0.1;
+            newPop[i+2u] = trait2 + (survival - 0.5) * 0.1;
+          }
+        `;
+
+        const module = this.device.createShaderModule({code: wgsl});
+        this.pipeline = this.device.createComputePipeline({
+          layout: 'auto',
+          compute: {module, entryPoint: 'compete'}
+        });
+
+        this.popBuffer = this.device.createBuffer({
+          size: 16*3*4, // 16 thoughts x 3 floats x 4 bytes
+          usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST
+        });
+      }
+
+      async neuralStep() {
+        if (this.cpuFallback || !this.device) {
+          this.cpuNeuralStep();
+          return;
+        }
+
+        const flatPop = new Float32Array(this.population.flatMap(p => [p.energy, p.traits[0], p.traits[1]]));
+        this.device.queue.writeBuffer(this.popBuffer, 0, flatPop);
+
+        // Execute competition
+        const encoder = this.device.createCommandEncoder();
+        const pass = encoder.beginComputePass();
+        pass.setPipeline(this.pipeline);
+        pass.setBindGroup(0, this.device.createBindGroup({
+          layout: this.pipeline.getBindGroupLayout(0),
+          entries: [
+            {binding: 0, resource: {buffer: this.popBuffer}},
+            {binding: 1, resource: {buffer: this.popBuffer}} // Read-write same buffer
+          ]
+        }));
+        pass.dispatchWorkgroups(1);
+        pass.end();
+        this.device.queue.submit([encoder]);
+
+        // Read back (simplified)
+        await new Promise(r => requestAnimationFrame(r));
+        this.updateFromGPU(flatPop);
+      }
+
+      cpuNeuralStep() {
+        // CPU fallback mirrors GPU logic
+        this.population.forEach((thought, i) => {
+          const fitness = thought.energy * (thought.traits[0] + thought.traits[1]);
+          const survival = Math.min(1, fitness / 20);
+          thought.energy *= survival;
+          thought.traits[0] += (survival - 0.5) * 0.1;
+          thought.traits[1] += (survival - 0.5) * 0.1;
+        });
+      }
+
+      updateFromGPU(data) {
+        this.population.forEach((thought, i) => {
+          thought.energy = data[i*3];
+          thought.traits[0] = data[i*3+1];
+          thought.traits[1] = data[i*3+2];
+        });
+      }
+
+      async injectCommand(cmd) {
+        // Worldbox-style mutation: spawn specialized thoughtform
+        const cmdEnergy = cmd.length * 1.5;
+        const cmdTraits = [Math.random(), Math.random(), 0.8]; // Command bias
+        
+        this.population.push({
+          id: this.population.length,
+          type: 'command',
+          energy: cmdEnergy,
+          traits: cmdTraits,
+          age: 0,
+          expression: cmd.slice(0,20)
+        });
+
+        // Overpopulation cull (Worldbox mechanics)
+        if (this.population.length > 20) {
+          this.population.sort((a,b) => b.energy - a.energy);
+          this.population = this.population.slice(0,16);
+        }
+
+        print(`💉 Injected "${cmd}" → energy cascade initiated`, 'response');
+      }
+
+      simulate() {
+        if (!this.running) return;
+        
+        this.gen++;
+        this.energy -= 0.5;
+        
+        // Neural competition step
+        this.neuralStep();
+        
+        // Ecosystem dynamics
+        this.decayWeaklings();
+        this.evolveTraits();
+        this.randomEvents();
+        this.updateStats();
+        
+        // Express dominant thoughts
+        const dominant = this.population
+          .filter(t => t.energy > 8)
+          .sort((a,b) => b.energy - a.energy)
+          .slice(0,3);
+        
+        dominant.forEach(t => {
+          print(`[${t.type.toUpperCase()}] ${t.expression || this.generateExpression(t)} (${t.energy.toFixed(0)}E)`, 'thought');
+        });
+
+        setTimeout(() => this.simulate(), 2000);
+      }
+
+      decayWeaklings() {
+        this.population = this.population.filter(t => {
+          t.energy *= 0.95;
+          t.age++;
+          if (t.energy < 1 && Math.random() < 0.1) {
+            print(`💀 ${t.type} decayed (age ${t.age})`, 'decay');
+            return false;
+          }
+          return true;
+        });
+      }
+
+      evolveTraits() {
+        if (this.population.length < 2) return;
+        
+        // Genetic crossover (Worldbox evolution)
+        const parent1 = this.population[0];
+        const parent2 = this.population[1];
+        
+        const child = {
+          id: this.population.length,
+          type: `${parent1.type}-${parent2.type}`,
+          energy: (parent1.energy + parent2.energy) * 0.6,
+          traits: [
+            (parent1.traits[0] + parent2.traits[0]) * 0.5 + (Math.random()-0.5)*0.1,
+            (parent1.traits[1] + parent2.traits[1]) * 0.5 + (Math.random()-0.5)*0.1,
+            Math.random() * 0.5
+          ],
+          age: 0
+        };
+        
+        this.population.push(child);
+      }
+
+      randomEvents() {
+        if (Math.random() < 0.1) {
+          // Neural storm
+          print('🌩️  NEURAL STORM - population halved', 'event');
+          this.population = this.population.slice(0, Math.floor(this.population.length/2));
+        }
+      }
+
+      generateExpression(thought) {
+        const expressions = {
+          curiosity: ['exploring possibilities', 'questioning reality', 'seeking patterns'],
+          memory: ['recalling yesterday', 'archive access', 'past echoes'],
+          emotion: ['feeling surge', 'heart pulse', 'mood swing'],
+          logic: ['computing outcomes', 'weighing options', 'deduction chain'],
+          command: ['directive active', 'priority task', 'external input']
+        };
+        return expressions[thought.type]?.[Math.floor(Math.random() * 3)] || 'processing';
+      }
+
+      updateStats() {
+        const energies = this.population.map(t => t.energy);
+        document.getElementById('energy').textContent = this.energy.toFixed(0);
+        document.getElementById('diversity').textContent = 
+          (energies.reduce((a,b)=>a+b,0)/energies.length).toFixed(1);
+        document.getElementById('stability').textContent = 
+          (100 - Math.abs(energies[0] - energies[energies.length-1])).toFixed(0);
+      }
+    }
+
+    // Terminal
+    const output = document.getElementById('output');
+    const input = document.getElementById('input');
+    const mind = new WorldboxMind();
+
+    function print(text, className = 'system') {
+      const div = document.createElement('div');
+      div.className = className;
+      div.textContent = text;
+      output.appendChild(div);
+      output.scrollTop = output.scrollHeight;
+    }
+
+    input.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        const cmd = input.value.trim();
+        if (cmd) {
+          await mind.injectCommand(cmd);
+        }
+        input.value = '';
+      }
+    });
+
+    // Auto-generate ambient commands occasionally
+    setInterval(() => {
+      if (Math.random() < 0.2) {
+        const ambient = ['dream', 'analyze', 'feel', 'compute'][Math.floor(Math.random()*4)];
+        mind.injectCommand(ambient);
+      }
+    }, 15000);
+  </script>
+</body>
+</html>
