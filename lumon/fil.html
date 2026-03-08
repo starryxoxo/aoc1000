@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="tl">
+<head>
+    <title>Filipino Sentence Analyzer (Mirinae-inspired)</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
+        .header { text-align: center; color: #2c3e50; margin-bottom: 30px; }
+        .input-section { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        #input { width: 100%; padding: 15px; font-size: 18px; border: 2px solid #3498db; border-radius: 8px; box-sizing: border-box; }
+        button { background: #3498db; color: white; padding: 15px 30px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px; }
+        button:hover { background: #2980b9; }
+        .analysis { background: #f8f9fa; padding: 20px; margin: 15px 0; border-radius: 8px; border-left: 5px solid #3498db; }
+        .tag { background: #e8f4f8; padding: 4px 8px; border-radius: 4px; font-family: monospace; margin: 2px; display: inline-block; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #3498db; color: white; }
+        pre { background: #2c3e50; color: #ecf0f1; padding: 15px; border-radius: 8px; overflow-x: auto; }
+        .voice-aspect { background: linear-gradient(90deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%); }
+        .syntax { background: linear-gradient(90deg, #a8edea 0%, #fed6e3 100%); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🇵🇭 Filipino Sentence Analyzer</h1>
+        <p>Mirinae-inspired tool for Tagalog/Filipino parsing with full voice, aspect, and morphology detection</p>
+    </div>
+
+    <div class="input-section">
+        <input id="input" type="text" placeholder="Try: 'Nagbigay si Maria ng regalo kay Juan kahapon.'" maxlength="200">
+        <button onclick="analyze()">🔍 Analyze Sentence</button>
+    </div>
+
+    <div id="output"></div>
+
+    <script>
+        // Comprehensive Filipino tag database from linguistics breakdown
+        const filTags = {
+            pos: { N: 'Pangngalan (Noun)', V: 'Pandiwa (Verb)', ADJ: 'Pang-uri (Adjective)', ADV: 'Pang-abay (Adverb)', PRO: 'Panghalip (Pronoun)' },
+            focus: { 
+                actor: 'Actor-focus (Gumit: -um-/mag-)', 
+                goal: 'Goal-focus (Panimunuan: -in)', 
+                locative: 'Locative-focus (-an)', 
+                benefactive: 'Benefactive (i-/-an)' 
+            },
+            aspect: { 
+                perfective: 'Completed (∅/nag-)', 
+                progressive: 'Progressive (kumaka-/nagka-)', 
+                infinitive: 'Infinitive/Contemplated (mag-/b-)' 
+            },
+            markers: { 
+                ang: 'Topic/Nominative (ang/si)', 
+                ng: 'Genitive (ng/ni)', 
+                sa: 'Dative/Locative (sa)', 
+                ba: 'Question particle', 
+                na: 'Linker/attributive' 
+            },
+            voice: { 
+                AV: 'Actor Voice (-um-/mag-)', 
+                PV: 'Patient Voice (-in)', 
+                LV: 'Locative Voice (-an)', 
+                BV: 'Benefactive Voice (i-)' 
+            }
+        };
+
+        // Voice & Aspect regex patterns (prioritized detection)
+        const voiceAspect = {
+            voice: {
+                AV: [/^[m]ag[^a]/, /^[bk]um?[aeiou]/, /^nag[^g][^a]/],  // magbasa, bumasa, nagbasa
+                PV: [/[aeiou][^aeiou]*in$/, /in[^aeiou]*$/],            // basahin, binasa
+                LV: [/[aeiou][^aeiou]*an$/, /an[^aeiou]*$/],            // basahan
+                BV: [/^i[bcdfghjklmnpqrstvwxyz][aeiou]/]                // ibasa
+            },
+            aspect: {
+                completed: [/^[nk]um?[aeiou]/, /^nag[^g][aeiou]/],       // kumain, nagbasa
+                progressive: [/^[gk]um?ag?[^a]/, /nagk?ag?[^a]/, /ka[^g]/], // kumakain, nagkakain
+                infinitive: [/^mag[^a]/, /^[bk]-?/]
+            }
+        };
+
+        // Basic patterns from original prototype + expansions
+        const patterns = {
+            actorFocus: /um[aeiou]?(?=[^aeiou])/g,
+            ngFocus: /mag[aieou]?/g,
+            topic: /(?:^|s)(ang|si|sina)\b/gi,
+            genitive: /(?:^|s)(ng|ni)\b/gi,
+            locative: /(?:^|s)(sa)\b/gi,
+            pronoun: /\b(ako|ka|ikaw|iya|siya|kami|tayo|kay|silang?|ito|iyan|iyon)\b/gi,
+            question: /s+ba\b|\b ba\b/gi
+        };
+
+        const explanations = {
+            actorFocus: "Actor-focus affix (-um-): Action by subject",
+            ngFocus: "Object/goal-focus (mag-): Action toward object", 
+            topic: "Topic marker (ang/si): Sentence focus",
+            genitive: "Possession/genitive (ng/ni)",
+            locative: "Location/direction (sa)",
+            pronoun: "Personal pronoun",
+            question: "Question particle (ba)"
+        };
+
+        function analyze() {
+            const sentence = document.getElementById('input').value.trim();
+            if (!sentence) return;
+            
+            let output = `
+                <div class="analysis">
+                    <h3>📝 Input: <em>${sentence}</em></h3>
+                </div>
+            `;
+
+            // Token breakdown
+            const words = sentence.split(/s+/).filter(w => w);
+            output += '<div class="analysis"><h4>🔤 Token Breakdown:</h4><ul>';
+            
+            words.forEach((word, i) => {
+                let tags = analyzeWord(word);
+                output += `<li><strong>${word}</strong>: ${tags.join(', ')}</li>`;
+            });
+            output += '</ul></div>';
+
+            // Voice/Aspect table for verbs
+            const verbs = words.filter(w => /[umaginkb]/.test(w)).map(analyzeVerb);
+            if (verbs.length) {
+                output += '<div class="analysis voice-aspect"><h4>🎭 Voice & Aspect Analysis:</h4>';
+                output += '<table><tr><th>Verb</th><th>Voice</th><th>Aspect</th><th>Meaning</th></tr>';
+                verbs.forEach(v => {
+                    output += `<tr><td>${v.word}</td><td>${v.voice}</td><td>${v.aspect}</td><td>${v.meaning}</td></tr>`;
+                });
+                output += '</table></div>';
+            }
+
+            // Parse tree
+            output += parseTree(sentence, words);
+            
+            // Syntax summary
+            output += syntaxSummary(sentence);
+
+            document.getElementById('output').innerHTML = output;
+        }
+
+        function analyzeWord(word) {
+            const tags = [];
+            
+            // Voice/aspect detection
+            const verbTag = analyzeVerb(word);
+            if (verbTag.voice !== 'None') {
+                tags.push(`<span class="tag">${verbTag.voice} ${verbTag.aspect}</span>`);
+            }
+            
+            // POS patterns
+            for (let [key, regex] of Object.entries(patterns)) {
+                if (regex.test(sentenceContext(word))) {
+                    tags.push(`<span class="tag">${filTags.markers[key] || explanations[key]}</span>`);
+                }
+            }
+            
+            if (!tags.length) tags.push('<span class="tag">Pangngalan/Noun</span>');
+            return tags;
+        }
+
+        function analyzeVerb(word) {
+            let voice = 'None', aspect = 'None';
+            
+            // Voice priority: AV > PV > LV > BV
+            for (let [vType, regexes] of Object.entries(voiceAspect.voice)) {
+                for (let regex of regexes) {
+                    if (regex.test(word)) {
+                        voice = filTags.voice[vType];
+                        break;
+                    }
+                }
+                if (voice !== 'None') break;
+            }
+            
+            // Aspect detection
+            for (let [aType, regexes] of Object.entries(voiceAspect.aspect)) {
+                for (let regex of regexes) {
+                    if (regex.test(word)) {
+                        aspect = filTags.aspect[aType];
+                        break;
+                    }
+                }
+                if (aspect !== 'None') break;
+            }
+            
+            return {
+                word,
+                voice: voice === 'None' ? 'Non-verbal' : voice,
+                aspect: aspect === 'None' ? 'N/A' : aspect,
+                meaning: `${word} → ${voice} ${aspect}`
+            };
+        }
+
+        function sentenceContext(word) {
+            return ` ${word} `;
+        }
+
+        function parseTree(sentence, words) {
+            return `
+                <div class="analysis syntax">
+                    <h4>🌳 Simplified Parse Tree:</h4>
+                    <pre>
+S (Sentence: VSO order)
+├── VP (Verb Phrase): ${words.find(w => /[umaginkb]/.test(w)) || 'N/A'}
+│   ├── V (Verb root + voice/aspect)
+│   └── Arguments
+│       ├── Topic: ${words.find(w => /ang|si/.test(sentence)) ? 'ang/si NP' : 'inferred'}
+│       ├── Genitive: ${words.find(w => /ng|ni/.test(sentence)) ? 'ng/ni NP' : 'N/A'}
+│       └── Locative: ${words.find(w => /sa/.test(sentence)) ? 'sa PP' : 'N/A'}
+└── Modifiers (time/place: kahapon, doon)
+                    </pre>
+                </div>
+            `;
+        }
+
+        function syntaxSummary(sentence) {
+            const hasAng = /ang|si/.test(sentence);
+            const hasNg = /ng|ni/.test(sentence);
+            const hasSa = /sa/.test(sentence);
+            const hasVerb = /[umaginkb]/.test(sentence);
+            
+            return `
+                <div class="analysis">
+                    <h4>📊 Syntax Summary:</h4>
+                    <table>
+                        <tr><td>Word Order:</td><td>VSO ${hasAng ? '(ang-topic confirmed)' : '(inferred)'}</td></tr>
+                        <tr><td>Topic Marker:</td><td>${hasAng ? '✅ Present' : '❌ Inferred'}</td></tr>
+                        <tr><td>Genitive Marker:</td><td>${hasNg ? '✅ Present' : '❌ Absent'}</td></tr>
+                        <tr><td>Locative Marker:</td><td>${hasSa ? '✅ Present' : '❌ Absent'}</td></tr>
+                        <tr><td>Verb Morphology:</td><td>${hasVerb ? '✅ Voice/Aspect detected' : '❌ Nominal sentence'}</td></tr>
+                    </table>
+                </div>
+            `;
+        }
+
+        // Auto-analyze on Enter
+        document.getElementById('input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') analyze();
+        });
+
+        // Example sentences
+        document.getElementById('input').placeholder = "Try: 'Nagbigay si Maria ng regalo kay Juan kahapon.' or 'Binabasa ko ang libro.'";
+    </script>
+</body>
+</html>
