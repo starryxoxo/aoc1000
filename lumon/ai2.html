@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Worldbox Neural Mind</title>
+  <style>
+    body { 
+      margin: 0; padding: 20px; 
+      background: linear-gradient(180deg, #000011 0%, #001100 100%); 
+      color: #00ff88; 
+      font-family: 'Courier New', monospace; 
+      font-size: 13px; 
+    }
+    #terminal { height: 100vh; display: flex; flex-direction: column; }
+    #output { 
+      flex: 1; overflow-y: auto; padding: 15px; 
+      background: rgba(0,20,0,0.3); 
+      backdrop-filter: blur(5px);
+    }
+    #input-line { 
+      display: flex; padding: 15px; 
+      background: rgba(0,30,0,0.8); 
+      border-top: 2px solid #004400; 
+    }
+    #prompt { color: #00ff88; font-weight: bold; }
+    #input { 
+      flex: 1; background: none; border: none; 
+      color: #88ff88; font-family: inherit; outline: none; 
+    }
+    #stats { 
+      position: fixed; top: 10px; right: 10px; 
+      background: rgba(0,0,0,0.7); padding: 10px; 
+      font-size: 11px; border: 1px solid #004400;
+    }
+
+    .thought    { color: #88ff88; }
+    .impulse    { color: #ffaa44; }
+    .trait      { color: #44aaff; }
+    .event      { color: #ff4444; font-weight: bold; }
+    .system     { color: #00ff88; }
+    .decay      { color: #666666; }
+    .response   { color: #ffffff; }
+  </style>
+</head>
+<body>
+  <div id="stats">
+    Energy: <span id="energy">100</span> | 
+    Diversity: <span id="diversity">0</span> | 
+    Stability: <span id="stability">100</span>
+  </div>
+
+  <div id="terminal">
+    <div id="output">
+      <div class="system">🌌 WORLD-BOX NEURAL MIND v3.0</div>
+      <div class="system">Neural ecosystem simulation active. Population: 16 thoughtforms.</div>
+    </div>
+    <div id="input-line">
+      <span id="prompt">mind&gt;</span>
+      <input id="input" type="text" autocomplete="off" autofocus>
+    </div>
+  </div>
+
+<script type="module">
+
+class CognitiveMind {
+
+constructor(){
+
+this.population=[]
+
+this.workingMemory=[]
+this.shortTerm=[]
+this.longTerm=[]
+
+this.energy=100
+this.gen=0
+this.running=true
+
+this.neuro={
+dopamine:0.5,
+serotonin:0.5,
+norepinephrine:0.5
+}
+
+this.focus=[]
+
+this.initPopulation()
+this.simulate()
+this.initWebGPU()
+
+this.initVisualization()
+
+setInterval(()=>this.sleepCycle(),60000)
+
+}
+
+initPopulation(){
+
+const archetypes=[
+{type:'curiosity',energy:12,traits:[0.8,0.2,0.1]},
+{type:'memory',energy:8,traits:[0.1,0.9,0.3]},
+{type:'emotion',energy:15,traits:[0.4,0.1,0.7]},
+{type:'logic',energy:10,traits:[0.9,0.3,0.2]}
+]
+
+for(let i=0;i<16;i++){
+
+const arch=archetypes[i%4]
+
+this.population.push({
+id:i,
+type:arch.type,
+energy:arch.energy+(Math.random()-0.5)*4,
+traits:[...arch.traits.map(t=>t+(Math.random()-0.5)*0.2)],
+links:[],
+age:0
+})
+
+}
+
+this.buildAssociations()
+
+}
+
+buildAssociations(){
+
+this.population.forEach(t=>{
+
+const links=[]
+
+for(let i=0;i<3;i++){
+
+links.push({
+target:Math.floor(Math.random()*this.population.length),
+strength:Math.random()
+})
+
+}
+
+t.links=links
+
+})
+
+}
+
+async initWebGPU(){
+
+try{
+
+const adapter=await navigator.gpu.requestAdapter()
+if(!adapter) throw new Error()
+
+this.device=await adapter.requestDevice()
+
+print("GPU neural simulation active")
+
+this.setupGPU()
+
+}catch{
+
+print("CPU cognition mode","system")
+this.cpuFallback=true
+
+}
+
+}
+
+setupGPU(){
+
+const shader=`
+
+@group(0) @binding(0) var<storage,read> population:array<f32>;
+@group(0) @binding(1) var<storage,read_write> newPop:array<f32>;
+
+@compute @workgroup_size(64)
+fn compete(@builtin(global_invocation_id) id:vec3<u32>){
+
+let idx=id.x;
+let base=idx*3u;
+
+if(base+2u>=arrayLength(&population)){return;}
+
+let energy=population[base];
+let trait1=population[base+1u];
+let trait2=population[base+2u];
+
+let fitness=energy*(trait1+trait2);
+
+let survival=min(1.0,fitness/20.0);
+
+newPop[base]=energy*survival;
+newPop[base+1u]=trait1+(survival-0.5)*0.1;
+newPop[base+2u]=trait2+(survival-0.5)*0.1;
+
+}
+
+`
+
+const module=this.device.createShaderModule({code:shader})
+
+this.pipeline=this.device.createComputePipeline({
+layout:'auto',
+compute:{module,entryPoint:'compete'}
+})
+
+const size=16*3*4
+
+this.popBuffer=this.device.createBuffer({
+size,
+usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST
+})
+
+this.newPopBuffer=this.device.createBuffer({
+size,
+usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_SRC
+})
+
+this.readBuffer=this.device.createBuffer({
+size,
+usage:GPUBufferUsage.COPY_DST|GPUBufferUsage.MAP_READ
+})
+
+}
+
+async neuralStep(){
+
+if(this.cpuFallback||!this.device){
+this.cpuNeuralStep()
+return
+}
+
+const flat=new Float32Array(
+this.population.flatMap(p=>[p.energy,p.traits[0],p.traits[1]])
+)
+
+this.device.queue.writeBuffer(this.popBuffer,0,flat)
+
+const encoder=this.device.createCommandEncoder()
+const pass=encoder.beginComputePass()
+
+const bind=this.device.createBindGroup({
+layout:this.pipeline.getBindGroupLayout(0),
+entries:[
+{binding:0,resource:{buffer:this.popBuffer}},
+{binding:1,resource:{buffer:this.newPopBuffer}}
+]
+})
+
+pass.setPipeline(this.pipeline)
+pass.setBindGroup(0,bind)
+
+pass.dispatchWorkgroups(Math.ceil(this.population.length/64))
+pass.end()
+
+encoder.copyBufferToBuffer(
+this.newPopBuffer,0,this.readBuffer,0,flat.byteLength
+)
+
+this.device.queue.submit([encoder.finish()])
+
+await this.readBuffer.mapAsync(GPUMapMode.READ)
+
+const copy=new Float32Array(
+this.readBuffer.getMappedRange().slice()
+)
+
+this.readBuffer.unmap()
+
+this.updateFromGPU(copy)
+
+}
+
+cpuNeuralStep(){
+
+this.population.forEach(t=>{
+
+let fitness=t.energy*(t.traits[0]+t.traits[1])
+
+fitness*=1+this.neuro.dopamine
+
+if(t.type==="emotion") fitness*=1.3
+
+const survival=Math.min(1,fitness/20)
+
+t.energy*=survival
+
+t.traits[0]+= (survival-0.5)*0.1
+t.traits[1]+= (survival-0.5)*0.1
+
+})
+
+}
+
+updateFromGPU(data){
+
+this.population.forEach((t,i)=>{
+
+t.energy=data[i*3]
+t.traits[0]=data[i*3+1]
+t.traits[1]=data[i*3+2]
+
+})
+
+}
+
+applyAttention(){
+
+this.focus=this.population
+.sort((a,b)=>b.energy-a.energy)
+.slice(0,5)
+
+}
+
+activateAssociations(){
+
+this.focus.forEach(t=>{
+
+t.links.forEach(link=>{
+
+const target=this.population[link.target]
+if(!target) return
+
+target.energy+=link.strength*0.5
+
+})
+
+})
+
+}
+
+sensoryInput(){
+
+const stimuli=[
+"sound",
+"visual pattern",
+"emotion spike",
+"memory trigger"
+]
+
+if(Math.random()<0.2){
+
+const stim=stimuli[Math.floor(Math.random()*stimuli.length)]
+
+this.population.push({
+id:this.population.length,
+type:"sensory",
+energy:8,
+traits:[Math.random(),Math.random(),0.5],
+links:[],
+age:0,
+expression:stim
+})
+
+print("stimulus detected: "+stim)
+
+}
+
+}
+
+metaThought(){
+
+if(Math.random()<0.05){
+
+const avg=this.population.reduce((a,b)=>a+b.energy,0)/this.population.length
+
+if(avg<5){
+this.neuro.dopamine+=0.1
+print("meta: boosting motivation")
+}
+
+}
+
+}
+
+sleepCycle(){
+
+print("sleep cycle: consolidating memories")
+
+this.longTerm=this.shortTerm.filter(m=>m.energy>6)
+
+this.shortTerm=[]
+
+this.population=this.population.filter(p=>p.energy>2)
+
+}
+
+randomEvents(){
+
+if(Math.random()<0.1){
+
+print("neural storm")
+
+this.population=this.population.slice(0,this.population.length/2)
+
+}
+
+}
+
+updateMemory(){
+
+this.workingMemory=this.focus
+
+this.shortTerm.push(...this.focus)
+
+}
+
+generateExpression(t){
+
+const e={
+curiosity:["exploring","seeking pattern","questioning"],
+memory:["recalling","archive access","memory trace"],
+emotion:["feeling surge","mood spike","emotional wave"],
+logic:["calculating","deducing","analyzing"]
+}
+
+return e[t.type]?.[Math.floor(Math.random()*3)]||"processing"
+
+}
+
+updateStats(){
+
+const energies=this.population.map(t=>t.energy)
+
+document.getElementById("energy").textContent=this.energy.toFixed(0)
+
+document.getElementById("diversity").textContent=
+(energies.reduce((a,b)=>a+b,0)/energies.length).toFixed(1)
+
+document.getElementById("stability").textContent=
+(100-Math.abs(Math.max(...energies)-Math.min(...energies))).toFixed(0)
+
+}
+
+simulate(){
+
+if(!this.running) return
+
+this.gen++
+
+this.energy-=0.2
+
+this.neuralStep()
+
+this.applyAttention()
+
+this.activateAssociations()
+
+this.sensoryInput()
+
+this.metaThought()
+
+this.randomEvents()
+
+this.updateMemory()
+
+this.updateStats()
+
+const dominant=this.focus.slice(0,3)
+
+dominant.forEach(t=>{
+print("["+t.type+"] "+(t.expression||this.generateExpression(t))+" ("+t.energy.toFixed(1)+")","thought")
+})
+
+this.renderBrain()
+
+setTimeout(()=>this.simulate(),2000)
+
+}
+
+initVisualization(){
+
+this.canvas=document.getElementById("brain")
+if(!this.canvas) return
+
+this.ctx=this.canvas.getContext("2d")
+
+}
+
+renderBrain(){
+
+if(!this.ctx) return
+
+const ctx=this.ctx
+
+ctx.clearRect(0,0,this.canvas.width,this.canvas.height)
+
+this.population.forEach(t=>{
+
+const x=Math.random()*this.canvas.width
+const y=Math.random()*this.canvas.height
+
+const r=Math.max(2,t.energy)
+
+ctx.beginPath()
+ctx.arc(x,y,r,0,Math.PI*2)
+ctx.fill()
+
+})
+
+}
+
+async injectCommand(cmd){
+
+this.population.push({
+id:this.population.length,
+type:"command",
+energy:cmd.length*1.5,
+traits:[Math.random(),Math.random(),0.8],
+links:[],
+expression:cmd,
+age:0
+})
+
+print("command injected: "+cmd,"response")
+
+}
+
+}
+
+const output=document.getElementById("output")
+const input=document.getElementById("input")
+
+function print(text,cls="system"){
+
+const div=document.createElement("div")
+div.className=cls
+div.textContent=text
+
+output.appendChild(div)
+output.scrollTop=output.scrollHeight
+
+}
+
+const mind=new CognitiveMind()
+
+input.addEventListener("keydown",async e=>{
+
+if(e.key==="Enter"){
+
+const cmd=input.value.trim()
+
+if(cmd) await mind.injectCommand(cmd)
+
+input.value=""
+
+}
+
+})
+
+setInterval(()=>{
+
+if(Math.random()<0.2){
+
+const ambient=["dream","analyze","feel","compute"]
+[Math.floor(Math.random()*4)]
+
+mind.injectCommand(ambient)
+
+}
+
+},15000)
+
+</script>
+
+</body>
+</html>
