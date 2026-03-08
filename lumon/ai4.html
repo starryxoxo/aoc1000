@@ -1,0 +1,44 @@
+<!DOCTYPE html><html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>file-cb_simulator.html - Full-Scale Central Bank Terminal Simulator 3000+</title>
+<style>
+body{background:#000;color:#00ff9c;font-family:monospace;margin:0;padding:0;}
+#terminal{padding:15px;height:100vh;overflow-y:auto;}
+.line{margin:4px 0;}
+.input-line{display:flex;}
+.prompt{margin-right:8px;}
+input{background:none;border:none;outline:none;color:#00ff9c;font-family:monospace;font-size:16px;width:100%;}
+.stat{color:#7dffcc;}
+.warn{color:#ffcc00;}
+.bad{color:#ff5555;}
+.chart-line{font-family:monospace;color:#00ccff;}
+</style>
+</head>
+<body>
+<div id="terminal"></div>
+<script>
+// ===== FULL SCALE CENTRAL BANK SIMULATOR HTML VERSION =====
+const terminal=document.getElementById("terminal");
+let state={year:1,interest:2.0,inflation:2.0,gdp:100,unemployment:5,currency:100,money:1000,reserveRatio:0.1,debt:500,bonds:200,banks:20,bankHealth:Array(20).fill(100),news:[],crisis:null,history:{inflation:[],gdp:[],currency:[],unemployment:[],debt:[],bonds:[]}};
+function print(text,cls=""){let div=document.createElement("div");div.className="line "+cls;div.innerHTML=text;terminal.appendChild(div);terminal.scrollTop=terminal.scrollHeight;}
+function newInput(){let line=document.createElement("div");line.className="input-line";let prompt=document.createElement("span");prompt.className="prompt";prompt.innerText="CB>";let input=document.createElement("input");line.appendChild(prompt);line.appendChild(input);terminal.appendChild(line);input.focus();input.addEventListener("keydown",e=>{if(e.key==="Enter"){let cmd=input.value;input.disabled=true;handleCommand(cmd);}});}
+function help(){print("COMMANDS");print("help - show commands");print("status - view economy");print("rate <number> - set interest rate");print("print <amount> - QE money");print("bonds <amount> - sell bonds");print("reserve <ratio> - set reserve ratio");print("stimulus <amount> - fiscal stimulus");print("next - advance year");print("chart - show ASCII charts");print("news - recent headlines");print("banks - show banking system");print("crisis - check ongoing crises");print("reset - restart simulation");}
+function status(){print(`YEAR: ${state.year}`,"stat");print(`Interest Rate: ${state.interest.toFixed(2)}%`,"stat");print(`Inflation: ${state.inflation.toFixed(2)}%`,"stat");print(`GDP: ${state.gdp.toFixed(2)}`,"stat");print(`Unemployment: ${state.unemployment.toFixed(2)}%`,"stat");print(`Currency: ${state.currency.toFixed(2)}`,"stat");print(`Money Supply: ${state.money.toFixed(0)}`,"stat");print(`Reserve Ratio: ${(state.reserveRatio*100).toFixed(1)}%`,"stat");print(`Debt: ${state.debt.toFixed(0)}`,"stat");print(`Bonds Outstanding: ${state.bonds.toFixed(0)}`,"stat");}
+function updateHistory(){for(let k in state.history){if(k==='inflation') state.history[k].push(state.inflation);else if(k==='gdp') state.history[k].push(state.gdp);else if(k==='currency') state.history[k].push(state.currency);else if(k==='unemployment') state.history[k].push(state.unemployment);else if(k==='debt') state.history[k].push(state.debt);else if(k==='bonds') state.history[k].push(state.bonds);if(state.history[k].length>100) state.history[k].shift();}}
+function asciiChart(data,label,max=50){print(`--- ${label} ---`,'chart-line');const maxVal=Math.max(...data);const minVal=Math.min(...data);data.forEach(v=>{const len=Math.round(((v-minVal)/(maxVal-minVal+0.01))*max);print('|'+ '#'.repeat(len));});}
+function chart(){updateHistory();asciiChart(state.history.inflation,'Inflation %');asciiChart(state.history.gdp,'GDP');asciiChart(state.history.unemployment,'Unemployment %');asciiChart(state.history.currency,'Currency Strength');asciiChart(state.history.debt,'Debt Level');asciiChart(state.history.bonds,'Bonds Outstanding');}
+let newsPool=[];for(let i=1;i<=500;i++){newsPool.push({text:`News Headline ${i} - economic effect`,effect:e=>{e.gdp+=Math.random()*5;e.inflation+=Math.random()*2;}});}
+function addNews(item){state.news.push(`Year ${state.year}: ${item}`);if(state.news.length>15) state.news.shift();print(item,'warn');}
+function randomEvent(){if(Math.random()<0.4){const n=newsPool[Math.floor(Math.random()*newsPool.length)];n.effect(state);addNews(n.text);}}
+function banksStatus(){print('--- BANKS ---','stat');state.bankHealth.forEach((h,i)=>{print(`Bank ${i+1}: ${h.toFixed(0)}% health`);});}
+let crisesList=[];for(let i=1;i<=50;i++){crisesList.push({name:`Crisis ${i}`,yearsLeft:2+Math.floor(Math.random()*3),effect:e=>{e.gdp-=Math.random()*10;e.inflation+=Math.random()*5;e.unemployment+=Math.random()*2;}});}
+function checkCrises(){if(state.crisis){print(`Ongoing Crisis: ${state.crisis.name}`,'bad');if(state.crisis.yearsLeft>0){state.crisis.yearsLeft--;state.crisis.effect(state);}else{print(`Crisis ${state.crisis.name} ended.`,'warn');state.crisis=null;}}else{if(Math.random()<0.05){const c=crisesList[Math.floor(Math.random()*crisesList.length)];state.crisis=Object.assign({},c);print(`⚠ Crisis triggered: ${c.name}`,'bad');}}}
+function nextYear(){state.year++;let rateEffect=state.interest-2;state.inflation+=(state.money/1000-1)*0.5;state.inflation-=rateEffect*0.3;state.gdp+=2-state.interest*0.2;state.unemployment+=state.interest*0.15-0.3;state.currency+=state.interest*0.8-state.inflation*0.6;state.debt+=50;state.bonds+=20;state.bankHealth=state.bankHealth.map(h=>h-Math.random()*5);clamp();randomEvent();checkCrises();print('Year advanced.','warn');status();}
+function clamp(){state.inflation=Math.max(-5,Math.min(30,state.inflation));state.unemployment=Math.max(1,Math.min(30,state.unemployment));state.currency=Math.max(10,Math.min(200,state.currency));state.gdp=Math.max(20,Math.min(400,state.gdp));state.reserveRatio=Math.max(0.05,Math.min(0.5,state.reserveRatio));}
+function handleCommand(cmd){let parts=cmd.trim().split(' ');switch(parts[0]){case 'help':help();break;case 'status':status();break;case 'rate':let r=parseFloat(parts[1]);if(isNaN(r)){print('Enter valid rate','bad');break;}state.interest=r;print(`Interest rate set to ${r.toFixed(2)}%`);break;case 'print':let p=parseFloat(parts[1]);if(isNaN(p)){print('Enter amount','bad');break;}state.money+=p;state.inflation+=p/500;print(`Printed ${p} money.`,'warn');break;case 'bonds':let b=parseFloat(parts[1]);if(isNaN(b)){print('Enter amount','bad');break;}state.money-=b;state.currency+=b/50;state.bonds+=b;print(`Sold ${b} in bonds.`);break;case 'reserve':let rr=parseFloat(parts[1])/100;if(isNaN(rr)){print('Enter valid ratio','bad');break;}state.reserveRatio=rr;print(`Reserve ratio set to ${(rr*100).toFixed(1)}%`);break;case 'stimulus':let s=parseFloat(parts[1]);if(isNaN(s)){print('Enter valid stimulus','bad');break;}state.money+=s;state.gdp+=s*0.05;state.inflation+=s/1000;state.debt+=s*0.7;print(`Stimulus of ${s} injected.`,'warn');break;case 'next':nextYear();break;case 'chart':chart();break;case 'news':state.news.length?state.news.forEach(h=>print(h,'stat')):print('No recent headlines.');break;case 'banks':banksStatus();break;case 'crisis':state.crisis?print(`Ongoing Crisis: ${state.crisis.name}`,'bad'):print('No ongoing crisis.');break;case 'reset':location.reload();break;default:print('Unknown command. Type help.','bad');}newInput();}
+print('file-cb_simulator.html - FULL-SCALE CENTRAL BANK TERMINAL SIMULATOR 3000+');print('Type help to begin.');newInput();
+</script>
+</body>
+</html>
