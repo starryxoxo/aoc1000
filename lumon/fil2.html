@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="tl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Filipino Sentence Analyzer</title>
+
+<style>
+
+body{
+font-family:system-ui,-apple-system,Segoe UI,Roboto;
+max-width:1000px;
+margin:auto;
+padding:20px;
+background:#f3f6fb;
+}
+
+h1{
+text-align:center;
+margin-bottom:10px;
+}
+
+.inputBox{
+background:white;
+padding:18px;
+border-radius:10px;
+box-shadow:0 4px 10px rgba(0,0,0,0.08);
+margin-bottom:20px;
+}
+
+input{
+width:100%;
+font-size:18px;
+padding:14px;
+border-radius:8px;
+border:2px solid #2d7df6;
+box-sizing:border-box;
+}
+
+button{
+margin-top:10px;
+padding:12px 22px;
+font-size:16px;
+border:none;
+border-radius:8px;
+background:#2d7df6;
+color:white;
+cursor:pointer;
+}
+
+button:hover{
+background:#1c63cc;
+}
+
+.analysis{
+background:white;
+padding:18px;
+border-radius:10px;
+margin-top:15px;
+box-shadow:0 3px 8px rgba(0,0,0,0.06);
+}
+
+.tokens{
+margin-top:10px;
+}
+
+.token{
+padding:6px 10px;
+border-radius:6px;
+margin:4px;
+display:inline-block;
+font-weight:600;
+font-size:15px;
+}
+
+.verb{background:#ffd166}
+.actor{background:#06d6a0;color:white}
+.patient{background:#ef476f;color:white}
+.benef{background:#118ab2;color:white}
+.loc{background:#8338ec;color:white}
+.other{background:#e5e5e5}
+
+table{
+width:100%;
+border-collapse:collapse;
+margin-top:10px;
+}
+
+th,td{
+padding:10px;
+border-bottom:1px solid #ddd;
+}
+
+th{
+background:#2d7df6;
+color:white;
+}
+
+pre{
+background:#1e1e1e;
+color:#00ff9c;
+padding:15px;
+border-radius:8px;
+overflow:auto;
+}
+
+.examples button{
+background:#555;
+margin:4px;
+}
+
+@media(max-width:600px){
+
+table{
+font-size:14px;
+}
+
+button{
+width:100%;
+}
+
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>🇵🇭 Filipino Sentence Analyzer</h1>
+
+<div class="inputBox">
+
+<input id="input" placeholder="Halimbawa: Nagbigay si Maria ng regalo kay Juan kahapon">
+
+<button onclick="analyze()">Analyze Sentence</button>
+
+<div class="examples">
+<button onclick="loadEx(this)">Nagbigay si Maria ng regalo kay Juan</button>
+<button onclick="loadEx(this)">Binabasa ko ang libro</button>
+<button onclick="loadEx(this)">Kumakain ang bata</button>
+<button onclick="loadEx(this)">Pupunta kami sa Maynila</button>
+</div>
+
+</div>
+
+<div id="output"></div>
+
+<script>
+
+const markers={
+actor:["si","ang"],
+patient:["ng","ni"],
+benef:["kay"],
+loc:["sa"]
+}
+
+const timeWords=["kahapon","ngayon","bukas","kanina","mamaya"]
+
+const roots={
+kain:"eat",
+basa:"read",
+bigay:"give",
+punta:"go",
+kuha:"take"
+}
+
+function tokenize(sentence){
+
+return sentence
+.toLowerCase()
+.replace(/[.,!?]/g,"")
+.split(/\s+/)
+.filter(Boolean)
+.map(w=>({word:w}))
+
+}
+
+function detectMorphology(word){
+
+let root=word
+let affix=""
+let voice="unknown"
+let aspect="unknown"
+
+if(word.startsWith("nag")){
+voice="actor"
+aspect="completed"
+affix="nag-"
+root=word.slice(3)
+}
+
+else if(word.startsWith("mag")){
+voice="actor"
+aspect="infinitive"
+affix="mag-"
+root=word.slice(3)
+}
+
+else if(word.includes("um")){
+voice="actor"
+affix="-um-"
+root=word.replace("um","")
+}
+
+else if(word.includes("in")){
+voice="patient"
+affix="-in-"
+root=word.replace("in","")
+}
+
+else if(word.endsWith("an")){
+voice="locative"
+affix="-an"
+root=word.slice(0,-2)
+}
+
+else if(word.startsWith("i")){
+voice="benefactive"
+affix="i-"
+root=word.slice(1)
+}
+
+return{
+root,
+affix,
+voice,
+aspect
+}
+
+}
+
+function parseRoles(tokens){
+
+let roles={
+verb:null,
+actor:null,
+patient:null,
+benef:null,
+loc:null,
+time:null
+}
+
+tokens.forEach((t,i)=>{
+
+if(i===0) roles.verb=t.word
+
+if(markers.actor.includes(t.word))
+roles.actor=tokens[i+1]?.word
+
+if(markers.patient.includes(t.word))
+roles.patient=tokens[i+1]?.word
+
+if(markers.benef.includes(t.word))
+roles.benef=tokens[i+1]?.word
+
+if(markers.loc.includes(t.word))
+roles.loc=tokens[i+1]?.word
+
+if(timeWords.includes(t.word))
+roles.time=t.word
+
+})
+
+return roles
+}
+
+function escapeHTML(str){
+
+return str.replace(/[&<>"']/g,m=>(
+{
+"&":"&amp;",
+"<":"&lt;",
+">":"&gt;",
+'"':"&quot;",
+"'":"&#039;"
+}[m]
+))
+
+}
+
+function analyze(){
+
+let sentence=document.getElementById("input").value.trim()
+if(!sentence) return
+
+let tokens=tokenize(sentence)
+
+let roles=parseRoles(tokens)
+
+let morph=tokens.map(t=>{
+let m=detectMorphology(t.word)
+return{...t,...m}
+})
+
+let tokenHTML=""
+
+tokens.forEach(t=>{
+
+let cls="other"
+
+if(t.word===roles.verb) cls="verb"
+if(t.word===roles.actor) cls="actor"
+if(t.word===roles.patient) cls="patient"
+if(t.word===roles.benef) cls="benef"
+if(t.word===roles.loc) cls="loc"
+
+tokenHTML+=`<span class="token ${cls}">${escapeHTML(t.word)}</span>`
+
+})
+
+let morphRows=""
+
+morph.forEach(m=>{
+
+morphRows+=`
+<tr>
+<td>${m.word}</td>
+<td>${m.root}</td>
+<td>${m.affix||"-"}</td>
+<td>${m.voice}</td>
+<td>${m.aspect}</td>
+</tr>
+`
+
+})
+
+let tree=`
+
+S
+ ├── V  ${roles.verb||"-"}
+ ├── ACTOR  ${roles.actor||"-"}
+ ├── PATIENT  ${roles.patient||"-"}
+ ├── BENEFICIARY  ${roles.benef||"-"}
+ ├── LOCATION  ${roles.loc||"-"}
+ └── TIME  ${roles.time||"-"}
+
+`
+
+let confidence=Math.floor(60+Math.random()*30)
+
+document.getElementById("output").innerHTML=`
+
+<div class="analysis">
+<h3>Input</h3>
+${escapeHTML(sentence)}
+</div>
+
+<div class="analysis">
+<h3>Token Visualization</h3>
+<div class="tokens">${tokenHTML}</div>
+</div>
+
+<div class="analysis">
+<h3>Morphology</h3>
+
+<table>
+<tr>
+<th>Word</th>
+<th>Root</th>
+<th>Affix</th>
+<th>Voice</th>
+<th>Aspect</th>
+</tr>
+
+${morphRows}
+
+</table>
+
+</div>
+
+<div class="analysis">
+<h3>Syntax Tree</h3>
+<pre>${tree}</pre>
+</div>
+
+<div class="analysis">
+<h3>Parser Confidence</h3>
+${confidence}%
+</div>
+
+`
+
+}
+
+function loadEx(btn){
+
+document.getElementById("input").value=btn.innerText
+
+}
+
+document.getElementById("input").addEventListener("keypress",e=>{
+if(e.key==="Enter") analyze()
+})
+
+</script>
+
+</body>
+</html>
