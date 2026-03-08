@@ -3,273 +3,256 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Central Bank Terminal Simulator</title>
-
+<title>Advanced Central Bank Terminal</title>
 <style>
-body{
-background:#000;
-color:#00ff9c;
-font-family:monospace;
-margin:0;
-padding:0;
+body {
+  background:#000;
+  color:#00ff9c;
+  font-family:monospace;
+  margin:0;
+  padding:0;
 }
-
 #terminal{
-padding:15px;
-height:100vh;
-overflow-y:auto;
+  padding:15px;
+  height:100vh;
+  overflow-y:auto;
 }
-
-.line{
-margin:4px 0;
-}
-
-.input-line{
-display:flex;
-}
-
-.prompt{
-margin-right:8px;
-}
-
+.line{margin:4px 0;}
+.input-line{display:flex;}
+.prompt{margin-right:8px;}
 input{
-background:none;
-border:none;
-outline:none;
-color:#00ff9c;
-font-family:monospace;
-font-size:16px;
-width:100%;
+  background:none;
+  border:none;
+  outline:none;
+  color:#00ff9c;
+  font-family:monospace;
+  font-size:16px;
+  width:100%;
 }
-
-.stat{
-color:#7dffcc;
-}
-
-.warn{
-color:#ffcc00;
-}
-
-.bad{
-color:#ff5555;
-}
+.stat{color:#7dffcc;}
+.warn{color:#ffcc00;}
+.bad{color:#ff5555;}
+.chart-line{font-family:monospace;color:#00ccff;}
 </style>
 </head>
-
 <body>
-
 <div id="terminal"></div>
-
 <script>
-
 const terminal = document.getElementById("terminal")
 
 let state = {
-year:1,
-interest:2.0,
-inflation:2.0,
-gdp:100,
-unemployment:5,
-currency:100,
-money:1000
+  year:1,
+  interest:2.0,
+  inflation:2.0,
+  gdp:100,
+  unemployment:5,
+  currency:100,
+  money:1000,
+  reserveRatio:0.1,
+  debt:500,
+  bonds:200,
+  news: [],
 }
 
 function print(text,cls=""){
-let div=document.createElement("div")
-div.className="line "+cls
-div.innerHTML=text
-terminal.appendChild(div)
-terminal.scrollTop=terminal.scrollHeight
+  let div=document.createElement("div")
+  div.className="line "+cls
+  div.innerHTML=text
+  terminal.appendChild(div)
+  terminal.scrollTop=terminal.scrollHeight
 }
 
 function newInput(){
-
-let line=document.createElement("div")
-line.className="input-line"
-
-let prompt=document.createElement("span")
-prompt.className="prompt"
-prompt.innerText="CB>"
-
-let input=document.createElement("input")
-
-line.appendChild(prompt)
-line.appendChild(input)
-
-terminal.appendChild(line)
-input.focus()
-
-input.addEventListener("keydown",e=>{
-if(e.key==="Enter"){
-let cmd=input.value
-input.disabled=true
-handleCommand(cmd)
-}
-})
+  let line=document.createElement("div")
+  line.className="input-line"
+  let prompt=document.createElement("span")
+  prompt.className="prompt"
+  prompt.innerText="CB>"
+  let input=document.createElement("input")
+  line.appendChild(prompt)
+  line.appendChild(input)
+  terminal.appendChild(line)
+  input.focus()
+  input.addEventListener("keydown",e=>{
+    if(e.key==="Enter"){
+      let cmd=input.value
+      input.disabled=true
+      handleCommand(cmd)
+    }
+  })
 }
 
 function help(){
-
-print("COMMANDS")
-print("help - show commands")
-print("status - view economy")
-print("rate <number> - set interest rate")
-print("print <amount> - print money")
-print("bonds <amount> - sell bonds")
-print("next - advance year")
-print("reset - restart simulation")
-
+  print("COMMANDS")
+  print("help - show commands")
+  print("status - view economy")
+  print("rate <number> - set interest rate")
+  print("print <amount> - QE money")
+  print("bonds <amount> - sell bonds")
+  print("reserve <ratio> - set reserve ratio")
+  print("stimulus <amount> - fiscal stimulus")
+  print("next - advance year")
+  print("chart - show ASCII charts")
+  print("reset - restart simulation")
+  print("news - recent headlines")
 }
 
 function status(){
-
-print("YEAR: "+state.year,"stat")
-print("Interest Rate: "+state.interest+"%","stat")
-print("Inflation: "+state.inflation.toFixed(2)+"%","stat")
-print("GDP Index: "+state.gdp.toFixed(2),"stat")
-print("Unemployment: "+state.unemployment.toFixed(2)+"%","stat")
-print("Currency Strength: "+state.currency.toFixed(2),"stat")
-print("Money Supply: "+state.money.toFixed(0),"stat")
-
+  print(`YEAR: ${state.year}`,"stat")
+  print(`Interest Rate: ${state.interest.toFixed(2)}%`,"stat")
+  print(`Inflation: ${state.inflation.toFixed(2)}%`,"stat")
+  print(`GDP: ${state.gdp.toFixed(2)}`,"stat")
+  print(`Unemployment: ${state.unemployment.toFixed(2)}%`,"stat")
+  print(`Currency: ${state.currency.toFixed(2)}`,"stat")
+  print(`Money Supply: ${state.money.toFixed(0)}`,"stat")
+  print(`Reserve Ratio: ${(state.reserveRatio*100).toFixed(1)}%`,"stat")
+  print(`Debt: ${state.debt.toFixed(0)}`,"stat")
+  print(`Bonds Outstanding: ${state.bonds.toFixed(0)}`,"stat")
 }
 
 function nextYear(){
-
-state.year++
-
-let rateEffect = state.interest - 2
-
-state.inflation += (state.money/1000 - 1)*0.5
-state.inflation -= rateEffect*0.3
-
-state.gdp += 2 - state.interest*0.2
-
-state.unemployment += state.interest*0.15 - 0.3
-
-state.currency += state.interest*0.8 - state.inflation*0.6
-
-clamp()
-
-print("Year advanced.","warn")
-
-randomEvents()
-
-status()
-
+  state.year++
+  let rateEffect = state.interest - 2
+  state.inflation += (state.money/1000 - 1)*0.5
+  state.inflation -= rateEffect*0.3
+  state.gdp += 2 - state.interest*0.2
+  state.unemployment += state.interest*0.15 - 0.3
+  state.currency += state.interest*0.8 - state.inflation*0.6
+  state.debt += 50 // baseline debt accumulation
+  state.bonds += 20 // baseline bond issuance
+  clamp()
+  randomEvents()
+  print("Year advanced.","warn")
+  status()
 }
 
 function clamp(){
-
-state.inflation=Math.max(-5,Math.min(20,state.inflation))
-state.unemployment=Math.max(1,Math.min(25,state.unemployment))
-state.currency=Math.max(20,Math.min(200,state.currency))
-state.gdp=Math.max(40,Math.min(300,state.gdp))
-
+  state.inflation=Math.max(-5,Math.min(20,state.inflation))
+  state.unemployment=Math.max(1,Math.min(25,state.unemployment))
+  state.currency=Math.max(20,Math.min(200,state.currency))
+  state.gdp=Math.max(40,Math.min(300,state.gdp))
+  state.reserveRatio=Math.max(0.05,Math.min(0.5,state.reserveRatio))
 }
 
 function randomEvents(){
-
-let r=Math.random()
-
-if(r<0.15){
-state.inflation+=2
-print("⚠ Supply shock increased inflation.","bad")
+  const r=Math.random()
+  if(r<0.1){
+    state.inflation+=3
+    state.gdp-=5
+    addNews("⚠ Supply shock hits, inflation rises!")
+  }else if(r<0.2){
+    state.gdp+=5
+    addNews("💡 Tech boom boosts GDP!")
+  }else if(r<0.3){
+    state.unemployment+=2
+    addNews("⚠ Recession fears increase unemployment!")
+  }else if(r<0.35){
+    state.currency-=10
+    addNews("🌍 Currency crisis! Value drops sharply!")
+  }else if(r<0.4){
+    state.debt+=100
+    addNews("🏛 Government debt increases suddenly!")
+  }
 }
 
-else if(r<0.30){
-state.gdp+=5
-print("Tech boom boosted GDP.","stat")
+function addNews(headline){
+  state.news.push(`Year ${state.year}: ${headline}`)
+  if(state.news.length>10) state.news.shift()
+  print(headline,"warn")
 }
 
-else if(r<0.40){
-state.unemployment+=2
-print("Recession fears increased unemployment.","bad")
+function showNews(){
+  if(state.news.length===0){
+    print("No recent headlines.")
+    return
+  }
+  state.news.forEach(h=>print(h,"stat"))
 }
 
+function asciiChart(data,label,max=50){
+  print(`--- ${label} ---`,"chart-line")
+  const maxVal=Math.max(...data)
+  const minVal=Math.min(...data)
+  data.forEach(v=>{
+    const len=Math.round(((v-minVal)/(maxVal-minVal+0.01))*max)
+    print("|"+ "#".repeat(len))
+  })
+}
+
+let history={inflation:[],gdp:[],currency:[]}
+
+function updateHistory(){
+  history.inflation.push(state.inflation)
+  history.gdp.push(state.gdp)
+  history.currency.push(state.currency)
+  if(history.inflation.length>50){
+    history.inflation.shift()
+    history.gdp.shift()
+    history.currency.shift()
+  }
+}
+
+function chart(){
+  updateHistory()
+  asciiChart(history.inflation,"Inflation %")
+  asciiChart(history.gdp,"GDP")
+  asciiChart(history.currency,"Currency Strength")
 }
 
 function handleCommand(cmd){
-
-let parts=cmd.trim().split(" ")
-
-switch(parts[0]){
-
-case "help":
-help()
-break
-
-case "status":
-status()
-break
-
-case "rate":
-
-let r=parseFloat(parts[1])
-
-if(isNaN(r)){
-print("Enter a valid rate.","bad")
-break
+  let parts=cmd.trim().split(" ")
+  switch(parts[0]){
+    case "help": help(); break
+    case "status": status(); break
+    case "rate":
+      let r=parseFloat(parts[1])
+      if(isNaN(r)){print("Enter valid rate","bad");break;}
+      state.interest=r
+      print(`Interest rate set to ${r.toFixed(2)}%`)
+      break
+    case "print":
+      let p=parseFloat(parts[1])
+      if(isNaN(p)){print("Enter amount","bad");break;}
+      state.money+=p
+      state.inflation+=p/500
+      print(`Printed ${p} money.`,"warn")
+      break
+    case "bonds":
+      let b=parseFloat(parts[1])
+      if(isNaN(b)){print("Enter amount","bad");break;}
+      state.money-=b
+      state.currency+=b/50
+      state.bonds+=b
+      print(`Sold ${b} in bonds.`)
+      break
+    case "reserve":
+      let rr=parseFloat(parts[1])/100
+      if(isNaN(rr)){print("Enter valid ratio","bad");break;}
+      state.reserveRatio=rr
+      print(`Reserve ratio set to ${(rr*100).toFixed(1)}%`)
+      break
+    case "stimulus":
+      let s=parseFloat(parts[1])
+      if(isNaN(s)){print("Enter valid stimulus","bad");break;}
+      state.money+=s
+      state.gdp+=s*0.05
+      state.inflation+=s/1000
+      state.debt+=s*0.7
+      print(`Stimulus of ${s} injected.`,"warn")
+      break
+    case "next": nextYear(); break
+    case "chart": chart(); break
+    case "news": showNews(); break
+    case "reset": location.reload(); break
+    default: print("Unknown command. Type 'help'.","bad")
+  }
+  newInput()
 }
 
-state.interest=r
-print("Interest rate set to "+r+"%")
-break
-
-case "print":
-
-let p=parseFloat(parts[1])
-
-if(isNaN(p)){
-print("Enter amount.","bad")
-break
-}
-
-state.money+=p
-state.inflation+=p/500
-
-print("Printed "+p+" money.","warn")
-
-break
-
-case "bonds":
-
-let b=parseFloat(parts[1])
-
-if(isNaN(b)){
-print("Enter amount.","bad")
-break
-}
-
-state.money-=b
-state.currency+=b/50
-
-print("Sold "+b+" in bonds.")
-
-break
-
-case "next":
-nextYear()
-break
-
-case "reset":
-location.reload()
-break
-
-default:
-print("Unknown command. Type 'help'.","bad")
-
-}
-
-newInput()
-
-}
-
-print("CENTRAL BANK TERMINAL SIMULATOR")
+print("ADVANCED CENTRAL BANK TERMINAL SIMULATOR")
 print("Type 'help' to begin.")
-
 newInput()
 
 </script>
-
 </body>
 </html>
