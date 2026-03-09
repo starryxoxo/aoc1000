@@ -12,6 +12,16 @@ body {
     //  }
 }
 
+table {
+    table-layout: fixed; 
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th, td {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
     .etym-container {
       --node-w: 65px;
       --node-h: 22px; 
